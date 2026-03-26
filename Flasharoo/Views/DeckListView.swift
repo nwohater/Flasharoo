@@ -60,11 +60,15 @@ struct DeckListView: View {
 private struct DeckRowView: View {
     let deck: Deck
 
+    private var activeCardCount: Int {
+        deck.cards.filter { $0.deletedAt == nil }.count
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(deck.name)
                 .font(.headline)
-            Text("\(deck.cards.filter { $0.deletedAt == nil }.count) cards")
+            Text("\(activeCardCount) cards")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
