@@ -6,9 +6,9 @@
 
 ## Phase 1 — Project foundation
 
-- [ ] Configure bundle ID and iCloud container (`iCloud.com.yourdomain.flasharoo`)
-- [ ] Add CloudKit capability to Xcode project
-- [ ] Add Background Modes capability (background fetch, background processing)
+- [x] Configure bundle ID and iCloud container (`iCloud.com.golackey.flasharoo`)
+- [x] Add CloudKit capability to Xcode project
+- [x] Add Background Modes capability (background fetch, background processing)
 - [x] Replace boilerplate `Item.swift` / `ContentView.swift` with app shell
 - [x] Set up `FlasharooApp.swift` with `ModelContainer` + CloudKit config
 - [x] Define all SwiftData models (Deck, Card, CardReview, MediaAsset, FilteredDeck, GestureSettings, UserSettings)
@@ -19,12 +19,12 @@
 
 ## Phase 2 — Core data layer
 
-- [ ] `Deck` CRUD (create, rename, delete with soft-delete)
-- [ ] `Card` CRUD (front/back HTML, tags, flags)
-- [ ] `CardReview` insert (append-only, never updated)
-- [ ] `UserSettings` singleton creation and access
-- [ ] `GestureSettings` default creation (global + per-deck fallthrough)
-- [ ] `BackgroundDataActor` scaffold (ModelActor for heavy operations)
+- [x] `Deck` CRUD (create, rename, delete with soft-delete)
+- [x] `Card` CRUD (front/back HTML, tags, flags)
+- [x] `CardReview` insert (append-only, never updated)
+- [x] `UserSettings` singleton creation and access
+- [x] `GestureSettings` default creation (global + per-deck fallthrough)
+- [x] `BackgroundDataActor` scaffold (ModelActor for heavy operations)
 - [ ] Verify SwiftData ↔ CloudKit sync in simulator (two-device simulation)
 
 ---
