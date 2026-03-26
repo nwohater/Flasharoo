@@ -9,11 +9,11 @@
 - [ ] Configure bundle ID and iCloud container (`iCloud.com.yourdomain.flasharoo`)
 - [ ] Add CloudKit capability to Xcode project
 - [ ] Add Background Modes capability (background fetch, background processing)
-- [ ] Replace boilerplate `Item.swift` / `ContentView.swift` with app shell
-- [ ] Set up `FlasharooApp.swift` with `ModelContainer` + CloudKit config
-- [ ] Define all SwiftData models (Deck, Card, CardReview, MediaAsset, FilteredDeck, GestureSettings, UserSettings)
-- [ ] Define all enumerations (CardState, SchedulerAlgorithm, CardFlag, MediaType, etc.)
-- [ ] Basic `NavigationSplitView` shell (sidebar + detail, adaptive iPhone/iPad/Mac)
+- [x] Replace boilerplate `Item.swift` / `ContentView.swift` with app shell
+- [x] Set up `FlasharooApp.swift` with `ModelContainer` + CloudKit config
+- [x] Define all SwiftData models (Deck, Card, CardReview, MediaAsset, FilteredDeck, GestureSettings, UserSettings)
+- [x] Define all enumerations (CardState, SchedulerAlgorithm, CardFlag, MediaType, etc.)
+- [x] Basic `NavigationSplitView` shell (sidebar + detail, adaptive iPhone/iPad/Mac)
 
 ---
 
