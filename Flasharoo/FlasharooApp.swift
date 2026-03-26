@@ -10,14 +10,24 @@ import SwiftData
 
 @main
 struct FlasharooApp: App {
-    var sharedModelContainer: ModelContainer = {
+    let container: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Deck.self, Card.self, CardReview.self,
+            MediaAsset.self, FilteredDeck.self,
+            GestureSettings.self, UserSettings.self
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        // TODO: Phase 1 — once bundle ID and iCloud capability are configured in Xcode,
+        // replace the configuration below with the CloudKit-backed version:
+        //
+        // let config = ModelConfiguration(
+        //     schema: schema,
+        //     cloudKitDatabase: .private("iCloud.com.yourdomain.flasharoo")
+        // )
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try ModelContainer(for: schema, configurations: [config])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -25,8 +35,14 @@ struct FlasharooApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(container)
+
+        #if os(macOS)
+        Settings {
+            Text("Settings") // placeholder — replaced in Phase 12
+        }
+        #endif
     }
 }
