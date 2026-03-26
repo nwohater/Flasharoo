@@ -10,45 +10,56 @@ import SwiftData
 
 struct DeckListView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(
-        filter: #Predicate<Deck> { $0.deletedAt == nil },
-        sort: [SortDescriptor(\Deck.sortIndex), SortDescriptor(\Deck.name)]
-    ) private var decks: [Deck]
+    @Query(sort: [SortDescriptor(\Deck.sortIndex), SortDescriptor(\Deck.name)])
+    var decks: [Deck]
 
     @Binding var selectedDeck: Deck?
     @State private var showingNewDeck = false
     @State private var newDeckName = ""
 
+    private var activeDecks: [Deck] {
+        decks.filter { $0.deletedAt == nil }
+    }
+
     var body: some View {
+        deckList
+            .navigationTitle("Flasharoo")
+            .toolbar { addButton }
+            .alert("New Deck", isPresented: $showingNewDeck, actions: newDeckAlertActions)
+    }
+
+    private var deckList: some View {
         List(selection: $selectedDeck) {
             Section("Decks") {
-                ForEach(decks) { deck in
+                ForEach(activeDecks) { deck in
                     NavigationLink(value: deck) {
                         DeckRowView(deck: deck)
                     }
                 }
             }
         }
-        .navigationTitle("Flasharoo")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingNewDeck = true
-                } label: {
-                    Label("New Deck", systemImage: "plus")
-                }
+    }
+
+    private var addButton: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                showingNewDeck = true
+            } label: {
+                Label("New Deck", systemImage: "plus")
             }
         }
-        .alert("New Deck", isPresented: $showingNewDeck) {
-            TextField("Deck name", text: $newDeckName)
-            Button("Create") { createDeck() }
-            Button("Cancel", role: .cancel) { newDeckName = "" }
-        }
+    }
+
+    @ViewBuilder
+    private func newDeckAlertActions() -> some View {
+        TextField("Deck name", text: $newDeckName)
+        Button("Create") { createDeck() }
+        Button("Cancel", role: .cancel) { newDeckName = "" }
     }
 
     private func createDeck() {
         guard !newDeckName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        let deck = Deck(name: newDeckName.trimmingCharacters(in: .whitespaces), sortIndex: decks.count)
+        let deck = Deck(name: newDeckName.trimmingCharacters(in: .whitespaces), sortIndex: activeDecks.count)
         modelContext.insert(deck)
         selectedDeck = deck
         newDeckName = ""
