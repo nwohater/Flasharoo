@@ -17,14 +17,10 @@ struct FlasharooApp: App {
             GestureSettings.self, UserSettings.self
         ])
 
-        // TODO: Phase 1 — once bundle ID and iCloud capability are configured in Xcode,
-        // replace the configuration below with the CloudKit-backed version:
-        //
-        // let config = ModelConfiguration(
-        //     schema: schema,
-        //     cloudKitDatabase: .private("iCloud.com.yourdomain.flasharoo")
-        // )
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let config = ModelConfiguration(
+            schema: schema,
+            cloudKitDatabase: .private("iCloud.com.golackey.flasharoo")
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [config])
