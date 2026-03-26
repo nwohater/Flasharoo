@@ -11,14 +11,14 @@ import SwiftData
 @Model
 final class Card {
     @Attribute(.unique) var id: UUID
-    @Attribute(.indexed) var deckID: UUID
+    var deckID: UUID
     var front: String                       // HTML string
     var back: String                        // HTML string
-    @Attribute(.indexed) var tags: String   // space-separated, tokenised for FTS
-    @Attribute(.indexed) var state: CardState
-    @Attribute(.indexed) var dueDate: Date
+    var tags: String                        // space-separated, tokenised for FTS
+    var state: CardState
+    var dueDate: Date
     var flag: CardFlag
-    @Attribute(.indexed) var createdAt: Date
+    var createdAt: Date
     var modifiedAt: Date
     var deletedAt: Date?
 

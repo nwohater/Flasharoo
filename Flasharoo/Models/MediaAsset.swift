@@ -11,14 +11,14 @@ import SwiftData
 @Model
 final class MediaAsset {
     @Attribute(.unique) var id: UUID
-    @Attribute(.indexed) var cardID: UUID
+    var cardID: UUID
     var type: MediaType
     var localFilename: String           // relative to Application Support/media/
     var mimeType: String
     var fileSizeBytes: Int
     var checksum: String                // SHA-256 of file contents
     var ckAssetRecordName: String?      // CloudKit record name after upload
-    @Attribute(.indexed) var syncState: MediaSyncState
+    var syncState: MediaSyncState
     var createdAt: Date
     var deletedAt: Date?
     var card: Card?

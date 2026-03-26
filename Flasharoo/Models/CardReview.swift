@@ -13,8 +13,8 @@ import SwiftData
 @Model
 final class CardReview {
     @Attribute(.unique) var id: UUID
-    @Attribute(.indexed) var cardID: UUID
-    @Attribute(.indexed) var reviewedAt: Date
+    var cardID: UUID
+    var reviewedAt: Date
     var rating: Int                     // SM-2: 0–5  |  FSRS: 1–4
     var algorithm: SchedulerAlgorithm
     var intervalBefore: Int             // days
