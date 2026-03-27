@@ -61,14 +61,14 @@
 
 ## Phase 5 — Card editor
 
-- [ ] Rich-text / HTML card editor (front + back)
-- [ ] Tag input with autocomplete
-- [ ] Image attachment (photo library + camera)
-- [ ] Image re-compression on import (>5 MB → JPEG 85%)
-- [ ] Audio attachment (file import; reject >5 min)
-- [ ] Drawing button in formatting toolbar (opens `DrawingCanvasView`)
-- [ ] `asset://` URL scheme handler for card HTML → local file resolution
-- [ ] Card preview (rendered via `CardWebView`)
+- [x] Rich-text / HTML card editor (front + back)
+- [x] Tag input with autocomplete
+- [x] Image attachment (photo library + camera)
+- [x] Image re-compression on import (>5 MB → JPEG 85%)
+- [x] Audio attachment (file import; reject >5 min)
+- [ ] Drawing button in formatting toolbar (opens `DrawingCanvasView`) — Phase 7
+- [ ] `asset://` URL scheme handler for card HTML → local file resolution — Phase 6
+- [ ] Card preview (rendered via `CardWebView`) — Phase 6
 
 ---
 

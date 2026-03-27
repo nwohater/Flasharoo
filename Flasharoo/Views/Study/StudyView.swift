@@ -11,6 +11,7 @@ import SwiftData
 struct StudyView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var vm: StudyViewModel
+    @State private var showingEditor = false
 
     init(deck: Deck, modelContext: ModelContext) {
         _vm = State(initialValue: StudyViewModel(deck: deck, modelContext: modelContext))
@@ -32,6 +33,11 @@ struct StudyView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { studyToolbar }
         .task { vm.buildQueue() }
+        .sheet(isPresented: $showingEditor) {
+            if let card = vm.currentCard {
+                CardEditorView(deck: vm.deck, card: card)
+            }
+        }
         // Keyboard shortcuts
         .onKeyPress(.space) {
             vm.isAnswerRevealed ? vm.rate(3) : vm.revealAnswer()
@@ -140,7 +146,8 @@ struct StudyView: View {
         case .skipCard:       vm.skip()
         case .undoLastRating: vm.undoLastRating()
         case .flagCard:       vm.toggleFlag()
-        case .none, .editCard, .playAudio, .openDeckStats, .toggleAutoplay: break
+        case .editCard:       showingEditor = true
+        case .none, .playAudio, .openDeckStats, .toggleAutoplay: break
         }
     }
 }

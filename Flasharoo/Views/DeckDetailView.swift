@@ -12,7 +12,7 @@ struct DeckDetailView: View {
     @Environment(\.modelContext) private var modelContext
     let deck: Deck
 
-    @State private var isStudying = false
+    @State private var showingNewCard = false
 
     private var activeCards: [Card] { deck.cards.filter { $0.deletedAt == nil } }
     private var dueCount: Int {
@@ -44,6 +44,16 @@ struct DeckDetailView: View {
                 }
                 .disabled(dueCount == 0)
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    showingNewCard = true
+                } label: {
+                    Label("New Card", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $showingNewCard) {
+            CardEditorView(deck: deck)
         }
     }
 
