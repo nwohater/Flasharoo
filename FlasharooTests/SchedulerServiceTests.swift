@@ -8,6 +8,7 @@
 //  All SchedulerService computation methods are nonisolated, so no async needed.
 //
 
+import Foundation
 import Testing
 @testable import Flasharoo
 
@@ -21,20 +22,20 @@ struct SchedulerServiceTests {
         let r = sched.sm2(grade: 4, repetitions: 0, easeFactor: 2.5, interval: 0)
         #expect(r.repetitions == 1)
         #expect(r.interval == 1)
-        #expect(r.easeFactor > 2.5)          // grade 4 increases EF
+        #expect(abs(r.easeFactor - 2.5) < 0.001)  // grade 4: delta = 0.1 - 1*(0.08+0.02) = 0, EF unchanged
     }
 
     @Test func sm2_secondPass_grade3() {
         let r = sched.sm2(grade: 3, repetitions: 1, easeFactor: 2.5, interval: 1)
         #expect(r.repetitions == 2)
         #expect(r.interval == 6)             // second pass always 6 days
-        #expect(abs(r.easeFactor - 2.5) < 0.001)  // grade 3 leaves EF unchanged
+        #expect(r.easeFactor < 2.5)          // grade 3: delta = -0.14, EF decreases
     }
 
     @Test func sm2_thirdPass_grade3() {
         let r = sched.sm2(grade: 3, repetitions: 2, easeFactor: 2.5, interval: 6)
         #expect(r.repetitions == 3)
-        #expect(r.interval == 15)            // 6 * 2.5 = 15.0 → 15
+        #expect(r.interval == 14)            // 6 * (2.5 - 0.14) = 6 * 2.36 = 14.16 → 14
     }
 
     @Test func sm2_fail_resetsRepetitions() {
@@ -232,6 +233,6 @@ struct SchedulerServiceTests {
     }
 
     @Test func formatDays_12Months_showsYear() {
-        #expect(sched.formatDays(365) == "12mo") // 365/30 = 12 months
+        #expect(sched.formatDays(365) == "1y") // 365/30 = 12 months → ≥12 → "1y"
     }
 }

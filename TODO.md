@@ -31,14 +31,14 @@
 
 ## Phase 3 — Scheduling engine
 
-- [ ] `SchedulerService` actor scaffold
-- [ ] SM-2 algorithm implementation + unit tests (verify against reference values)
-- [ ] FSRS v5 algorithm implementation + unit tests (verify against reference values)
-- [ ] `ScheduleResult` / `CardState` transitions (new → learning → review)
-- [ ] New card daily limit enforcement per deck
-- [ ] Study queue builder (`buildStudyQueue` — returns `[PersistentIdentifier]`)
-- [ ] `dueTodayCount`, `overdueCards`, `forecastNewCards` on `SchedulerService`
-- [ ] Interval hint labels for answer buttons (e.g. "Again: 10 min · Good: 4d")
+- [x] `SchedulerService` actor scaffold
+- [x] SM-2 algorithm implementation + unit tests (verify against reference values)
+- [x] FSRS v5 algorithm implementation + unit tests (verify against reference values)
+- [x] `ScheduleResult` / `CardState` transitions (new → learning → review)
+- [x] New card daily limit enforcement per deck
+- [x] Study queue builder (`buildStudyQueue` — returns `[PersistentIdentifier]`)
+- [x] `dueTodayCount`, `overdueCards`, `forecastNewCards` on `SchedulerService`
+- [x] Interval hint labels for answer buttons (e.g. "Again: 10 min · Good: 4d")
 
 ---
 

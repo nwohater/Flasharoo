@@ -17,13 +17,19 @@ struct FlasharooApp: App {
             GestureSettings.self, UserSettings.self
         ])
 
-        let config = ModelConfiguration(
+        let cloudConfig = ModelConfiguration(
             schema: schema,
             cloudKitDatabase: .private("iCloud.com.golackey.flasharoo")
         )
 
+        if let container = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+            return container
+        }
+
+        // Fallback: local-only (simulator without iCloud, test environment)
+        let localConfig = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
         do {
-            return try ModelContainer(for: schema, configurations: [config])
+            return try ModelContainer(for: schema, configurations: [localConfig])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
