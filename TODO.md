@@ -44,18 +44,18 @@
 
 ## Phase 4 — Study interface
 
-- [ ] `StudyViewModel` — queue management, card advance, undo last rating
-- [ ] Card flip view (front → back transition, 60fps)
-- [ ] Rating buttons row (Again / Hard / Good / Easy + interval hints)
-- [ ] 9-zone configurable tap area (`TapZoneView`)
-- [ ] 4-direction swipe gesture recognizer
-- [ ] Gesture → action dispatch (reads from `GestureSettings`)
-- [ ] Toolbar with 6 configurable action buttons
-- [ ] Flag card action
-- [ ] Skip card action
-- [ ] Undo last rating action
-- [ ] Session summary screen (retention %, breakdown, forecast, time)
-- [ ] Keyboard shortcuts (Space, 1–4, ⌘E, ⌘Z, ⌘F, ⌘N, ⌘,)
+- [x] `StudyViewModel` — queue management, card advance, undo last rating
+- [x] Card flip view (front → back transition, 60fps)
+- [x] Rating buttons row (Again / Hard / Good / Easy + interval hints)
+- [x] 9-zone configurable tap area (`TapZoneView`)
+- [x] 4-direction swipe gesture recognizer
+- [x] Gesture → action dispatch (reads from `GestureSettings`)
+- [x] Toolbar with 6 configurable action buttons
+- [x] Flag card action
+- [x] Skip card action
+- [x] Undo last rating action
+- [x] Session summary screen (retention %, breakdown, forecast, time)
+- [x] Keyboard shortcuts (Space, 1–4, ⌘E, ⌘Z, ⌘F, ⌘N, ⌘,)
 
 ---
 

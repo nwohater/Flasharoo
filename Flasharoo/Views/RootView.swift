@@ -18,9 +18,7 @@ struct RootView: View {
             DeckListView(selectedDeck: $selectedDeck)
         } detail: {
             if let deck = selectedDeck {
-                Text("Deck: \(deck.name)")   // placeholder — replaced in Phase 4
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
+                DeckDetailView(deck: deck)
             } else {
                 ContentUnavailableView(
                     "No Deck Selected",
