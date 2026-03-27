@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script src="mathjax-config.js"></script>
+  <script src="MathJax/es5/tex-chtml-full.js" id="MathJax-script"></script>
+  <link rel="stylesheet" href="card.css">
+</head>
+<body>
+  <div id="card-content">{{CONTENT}}</div>
+  <script>
+    function reportHeight() {
+      var h = document.body.scrollHeight;
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.heightReported) {
+        window.webkit.messageHandlers.heightReported.postMessage(h);
+      }
+    }
+
+    if (window.MathJax && window.MathJax.startup) {
+      window.MathJax.startup.promise.then(reportHeight);
+    } else {
+      window.addEventListener('load', reportHeight);
+    }
+  </script>
+</body>
+</html>

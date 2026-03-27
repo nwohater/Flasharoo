@@ -4,8 +4,9 @@
 //
 //  Created by Brandon Lackey on 3/26/26.
 //
-//  Displays the card front or back with a 3D flip animation.
-//  Phase 6 replaces the Text renderer with WKWebView / MathJax.
+//  Renders card content via WKWebView (MathJax / LaTeX capable).
+//  A single WebView instance is reused — HTML is swapped in place with
+//  a brief cross-fade when the answer is revealed.
 //
 
 import SwiftUI
@@ -14,35 +15,13 @@ struct CardFlipView: View {
     let card: Card
     let isRevealed: Bool
 
-    @State private var flipped = false
+    @State private var webHeight: CGFloat = 300
+    @State private var displayedHTML: String = ""
 
     var body: some View {
-        ZStack {
-            cardFace(text: card.front, isFront: true)
-                .opacity(flipped ? 0 : 1)
-                .rotation3DEffect(.degrees(flipped ? 180 : 0), axis: (x: 0, y: 1, z: 0))
-
-            cardFace(text: card.back, isFront: false)
-                .opacity(flipped ? 1 : 0)
-                .rotation3DEffect(.degrees(flipped ? 0 : -180), axis: (x: 0, y: 1, z: 0))
-        }
-        .onChange(of: isRevealed) { _, revealed in
-            withAnimation(.easeInOut(duration: 0.35)) {
-                flipped = revealed
-            }
-        }
-        .onChange(of: card.id) { _, _ in
-            flipped = false
-        }
-    }
-
-    private func cardFace(text: String, isFront: Bool) -> some View {
         ScrollView {
-            Text(stripHTML(text))
-                .font(.title3)
-                .multilineTextAlignment(.center)
-                .padding(24)
-                .frame(maxWidth: .infinity)
+            CardWebView(html: displayedHTML, contentHeight: $webHeight)
+                .frame(height: max(webHeight, 120))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
@@ -52,11 +31,23 @@ struct CardFlipView: View {
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)
-    }
-
-    /// Naive HTML tag stripper — replaced by WKWebView in Phase 6.
-    private func stripHTML(_ html: String) -> String {
-        html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        .animation(.easeInOut(duration: 0.25), value: displayedHTML)
+        .onAppear { displayedHTML = RenderService.shared.render(card: card, revealed: false) }
+        .onChange(of: isRevealed) { _, revealed in
+            withAnimation(.easeInOut(duration: 0.25)) {
+                displayedHTML = RenderService.shared.render(card: card, revealed: revealed)
+            }
+        }
+        .onChange(of: card.id) { _, _ in
+            displayedHTML = RenderService.shared.render(card: card, revealed: false)
+            webHeight = 300
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .cardWebViewHeightChanged)
+        ) { note in
+            if let h = note.userInfo?["height"] as? CGFloat, h > 0 {
+                webHeight = h
+            }
+        }
     }
 }

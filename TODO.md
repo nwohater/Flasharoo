@@ -74,12 +74,12 @@
 
 ## Phase 6 — MathJax rendering
 
-- [ ] Bundle MathJax 3 (`tex-chtml`, ~2 MB) in app resources
-- [ ] `card.css` with dark mode (`prefers-color-scheme`)
-- [ ] `RenderService` — HTML template with `{{CONTENT}}` substitution
-- [ ] `CardWebView` (`UIViewRepresentable` / `NSViewRepresentable`)
-- [ ] Height reporting via JS → `webkit.messageHandlers.heightReported`
-- [ ] Reuse single `WKWebView` instance per session (replace HTML, don't reload)
+- [x] Bundle MathJax 3 (`tex-chtml-full`, 1.3 MB) in app resources
+- [x] `card.css` with dark mode (`prefers-color-scheme`)
+- [x] `RenderService` — HTML template with `{{CONTENT}}` substitution
+- [x] `CardWebView` (`UIViewRepresentable` with reused WKWebView instance)
+- [x] Height reporting via JS → `webkit.messageHandlers.heightReported`
+- [x] Reuse single `WKWebView` instance per session (replace HTML, don't reload)
 - [ ] Verify <200ms first render, <50ms subsequent on device
 
 ---

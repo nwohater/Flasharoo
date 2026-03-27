@@ -1,0 +1,76 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --text-color: #000000;
+  --bg-color: transparent;
+  --divider-color: #c6c6c8;
+  --secondary-color: #6c6c70;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-color: #ffffff;
+    --divider-color: #38383a;
+    --secondary-color: #98989d;
+  }
+}
+
+html, body {
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+body {
+  font-family: -apple-system, "San Francisco", sans-serif;
+  font-size: 18px;
+  line-height: 1.55;
+  padding: 20px 16px;
+  word-wrap: break-word;
+}
+
+#card-content {
+  text-align: center;
+}
+
+/* Separator between front and back */
+.card-divider {
+  border: none;
+  border-top: 1px solid var(--divider-color);
+  margin: 20px 0;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+  margin: 12px auto;
+}
+
+/* Code */
+code {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 0.875em;
+  background: rgba(128, 128, 128, 0.15);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+pre > code {
+  display: block;
+  padding: 12px;
+  overflow-x: auto;
+  text-align: left;
+  border-radius: 6px;
+}
+
+/* MathJax overrides */
+mjx-container {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
