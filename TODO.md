@@ -86,12 +86,12 @@
 
 ## Phase 7 — Apple Pencil / drawing
 
-- [ ] `DrawingCanvasView` (`UIViewRepresentable` wrapping `PKCanvasView`)
-- [ ] `PKToolPicker` integration (iPad floating palette, iPhone bottom sheet)
-- [ ] Mac: mouse/trackpad input, fixed pressure, floating panel
-- [ ] Save drawing: `PKDrawing` data → `MediaAsset` (.drawing) + PNG export → `MediaAsset` (.image)
-- [ ] Re-open existing drawing for editing (load `PKDrawing` from stored data)
-- [ ] Embed PNG in card HTML via `<img src="asset://{assetID}">`
+- [x] `DrawingCanvasView` (`UIViewRepresentable` wrapping `PKCanvasView`)
+- [x] `PKToolPicker` integration (iPad floating palette, iPhone bottom sheet)
+- [x] Mac: mouse/trackpad input via `.anyInput` drawing policy
+- [x] Save drawing: `PKDrawing` data → `MediaAsset` (.drawing) + PNG export → `MediaAsset` (.image)
+- [x] Re-open existing drawing for editing (load `PKDrawing` from stored data)
+- [x] Embed PNG in card HTML via `<img src="asset://{assetID}">`
 
 ---
 

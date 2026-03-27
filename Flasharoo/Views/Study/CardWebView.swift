@@ -22,6 +22,7 @@ struct CardWebView: UIViewRepresentable {
 
         let config = WKWebViewConfiguration()
         config.userContentController = controller
+        config.setURLSchemeHandler(AssetURLSchemeHandler(), forURLScheme: "asset")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false

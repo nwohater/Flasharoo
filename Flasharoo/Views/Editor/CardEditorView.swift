@@ -23,6 +23,11 @@ struct CardEditorView: View {
     /// Stable ID used as the cardID for media even before the card is saved.
     @State private var pendingCardID = UUID()
 
+    @FocusState private var focusedField: CardField?
+    @State private var showingDrawing = false
+
+    private enum CardField { case front, back }
+
     private var isNew: Bool { card == nil }
 
     private var allDeckTags: [String] {
@@ -40,11 +45,13 @@ struct CardEditorView: View {
                 Section("Front") {
                     TextEditor(text: $front)
                         .frame(minHeight: 100)
+                        .focused($focusedField, equals: .front)
                 }
 
                 Section("Back") {
                     TextEditor(text: $back)
                         .frame(minHeight: 100)
+                        .focused($focusedField, equals: .back)
                 }
 
                 Section("Tags") {
@@ -65,8 +72,26 @@ struct CardEditorView: View {
                     Button("Save") { save() }
                         .disabled(front.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        focusedField = nil
+                        showingDrawing = true
+                    } label: {
+                        Label("Drawing", systemImage: "pencil.tip")
+                    }
+                }
             }
             .onAppear(perform: loadCard)
+            .sheet(isPresented: $showingDrawing) {
+                DrawingEditorView(cardID: pendingCardID) { imageAssetID in
+                    let tag = "<img src=\"asset://\(imageAssetID.uuidString)\">"
+                    if focusedField == .back {
+                        back += (back.isEmpty ? "" : "\n") + tag
+                    } else {
+                        front += (front.isEmpty ? "" : "\n") + tag
+                    }
+                }
+            }
         }
     }
 
