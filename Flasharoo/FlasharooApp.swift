@@ -43,6 +43,7 @@ struct FlasharooApp: App {
     // MARK: - App state
 
     @State private var syncMonitor = SyncMonitor()
+    @State private var aiSettings  = AISettings()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -58,6 +59,7 @@ struct FlasharooApp: App {
                 RootView()
                     .modelContainer(container)
                     .environment(syncMonitor)
+                    .environment(aiSettings)
                     .task { await runLaunchTasks(container: container) }
 
             case .failure(let error):
@@ -72,7 +74,8 @@ struct FlasharooApp: App {
 
         #if os(macOS)
         Settings {
-            Text("Settings") // placeholder — replaced in Phase 12
+            SettingsView()
+                .environment(aiSettings)
         }
         #endif
     }

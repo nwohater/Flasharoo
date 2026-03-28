@@ -156,14 +156,16 @@
 
 ## Phase 12 — Settings UI
 
-- [ ] Settings screen scaffold
-- [ ] Default scheduling algorithm (SM-2 / FSRS)
-- [ ] Show/hide interval hints
-- [ ] Autoplay audio toggle
-- [ ] Day start hour (default 4am)
-- [ ] Theme (system / light / dark)
-- [ ] Gesture customisation UI (tap zone grid + swipe pickers)
-- [ ] Toolbar customisation UI (drag to reorder, up to 6 actions)
+- [x] Settings screen scaffold
+- [x] Default scheduling algorithm (SM-2 / FSRS)
+- [x] Show/hide interval hints
+- [x] Autoplay audio toggle
+- [x] Day start hour (default 4am)
+- [x] Theme (system / light / dark)
+- [x] Gesture customisation UI (tap zone grid + swipe pickers)
+- [x] Toolbar customisation UI (drag to reorder, up to 6 actions)
+- [x] AI provider settings (Ollama, LM Studio, OpenAI, Claude, Gemini, Custom)
+- [x] AI deck generator sheet (topic + card count → creates Deck + Cards)
 - [ ] Per-deck settings override
 
 ---

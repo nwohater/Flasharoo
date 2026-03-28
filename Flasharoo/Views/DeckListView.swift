@@ -10,6 +10,7 @@ import SwiftData
 
 struct DeckListView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AISettings.self) private var aiSettings
     @Query(sort: [SortDescriptor(\Deck.sortIndex), SortDescriptor(\Deck.name)])
     var decks: [Deck]
     @Query(sort: \FilteredDeck.createdAt)
@@ -25,6 +26,8 @@ struct DeckListView: View {
     @State private var showingNewFilteredDeck = false
     @State private var editingFilteredDeck: FilteredDeck?
     @State private var showingGlobalStats = false
+    @State private var showingSettings = false
+    @State private var showingAIGenerator = false
 
     @State private var searchVM: SearchViewModel?
 
@@ -70,6 +73,14 @@ struct DeckListView: View {
                         }
                     }
             }
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+                .environment(aiSettings)
+        }
+        .sheet(isPresented: $showingAIGenerator) {
+            AIDeckGeneratorSheet()
+                .environment(aiSettings)
         }
         .task {
             if searchVM == nil {
@@ -135,6 +146,20 @@ struct DeckListView: View {
                 Label("Statistics", systemImage: "chart.bar.xaxis")
             }
         }
+        if aiSettings.isConfigured {
+            ToolbarItem(placement: .secondaryAction) {
+                Button { showingAIGenerator = true } label: {
+                    Label("Generate with AI", systemImage: "wand.and.stars")
+                }
+            }
+        }
+        #if os(iOS)
+        ToolbarItem(placement: .secondaryAction) {
+            Button { showingSettings = true } label: {
+                Label("Settings", systemImage: "gear")
+            }
+        }
+        #endif
         ToolbarItem(placement: .status) {
             SyncStatusButton()
         }
