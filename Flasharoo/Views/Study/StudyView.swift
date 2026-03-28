@@ -17,10 +17,26 @@ struct StudyView: View {
         _vm = State(initialValue: StudyViewModel(deck: deck, modelContext: modelContext))
     }
 
+    init(
+        cards: [Card],
+        name: String,
+        algorithm: SchedulerAlgorithm = .fsrs,
+        rescheduleCards: Bool,
+        modelContext: ModelContext
+    ) {
+        _vm = State(initialValue: StudyViewModel(
+            cards: cards,
+            name: name,
+            algorithm: algorithm,
+            rescheduleCards: rescheduleCards,
+            modelContext: modelContext
+        ))
+    }
+
     var body: some View {
         Group {
             if vm.isSessionComplete {
-                SessionSummaryView(stats: vm.stats, deck: vm.deck) {
+                SessionSummaryView(stats: vm.stats, sourceName: vm.source.displayName) {
                     dismiss()
                 }
             } else if vm.currentCard != nil {
@@ -29,13 +45,14 @@ struct StudyView: View {
                 ProgressView("Building queue…")
             }
         }
-        .navigationTitle(vm.deck.name)
+        .navigationTitle(vm.source.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { studyToolbar }
         .task { vm.buildQueue() }
         .sheet(isPresented: $showingEditor) {
-            if let card = vm.currentCard {
-                CardEditorView(deck: vm.deck, card: card)
+            if let card = vm.currentCard,
+               let deck = card.deck ?? vm.source.deckIfPresent {
+                CardEditorView(deck: deck, card: card)
             }
         }
         // Keyboard shortcuts

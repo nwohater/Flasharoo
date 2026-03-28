@@ -4,20 +4,22 @@
 //
 //  Created by Brandon Lackey on 3/26/26.
 //
-//  Handles local file storage for card media (images, audio, drawings).
-//  CloudKit upload/download wired in Phase 8.
+//  Handles local file storage and CloudKit upload/download for card media.
 //
 
 import Foundation
 import UIKit
 import AVFoundation
 import CryptoKit
+import CloudKit
 
 enum MediaServiceError: LocalizedError {
     case fileTooLarge(Int)
     case audioDurationExceeded(TimeInterval)
     case unsupportedFormat
     case fileNotFound
+    case uploadFailed
+    case downloadFailed
 
     var errorDescription: String? {
         switch self {
@@ -29,6 +31,10 @@ enum MediaServiceError: LocalizedError {
             return "Unsupported file format."
         case .fileNotFound:
             return "Media file not found on this device."
+        case .uploadFailed:
+            return "Failed to upload media to iCloud."
+        case .downloadFailed:
+            return "Failed to download media from iCloud."
         }
     }
 }
@@ -37,6 +43,8 @@ actor MediaService {
     static let shared = MediaService()
 
     private let baseURL: URL
+    private let thumbnailCache = NSCache<NSString, UIImage>()
+    private let ckContainerID = "iCloud.com.golackey.flasharoo"
 
     init() {
         let appSupport = FileManager.default
@@ -44,6 +52,7 @@ actor MediaService {
         baseURL = appSupport.appendingPathComponent("media", isDirectory: true)
         try? FileManager.default.createDirectory(
             at: baseURL, withIntermediateDirectories: true)
+        thumbnailCache.countLimit = 200
     }
 
     // MARK: - Save
@@ -100,10 +109,19 @@ actor MediaService {
         return try Data(contentsOf: url)
     }
 
-    func thumbnail(for asset: MediaAsset, size: CGSize = CGSize(width: 80, height: 80)) async throws -> UIImage {
+    func thumbnail(
+        for asset: MediaAsset,
+        size: CGSize = CGSize(width: 80, height: 80)
+    ) async throws -> UIImage {
+        let cacheKey = "\(asset.id.uuidString)_\(Int(size.width))x\(Int(size.height))" as NSString
+        if let cached = thumbnailCache.object(forKey: cacheKey) {
+            return cached
+        }
         let data = try await load(asset: asset)
         guard let image = UIImage(data: data) else { throw MediaServiceError.unsupportedFormat }
-        return image.preparingThumbnail(of: size) ?? image
+        let thumb = image.preparingThumbnail(of: size) ?? image
+        thumbnailCache.setObject(thumb, forKey: cacheKey)
+        return thumb
     }
 
     // MARK: - Delete
@@ -113,7 +131,94 @@ actor MediaService {
         if FileManager.default.fileExists(atPath: url.path) {
             try FileManager.default.removeItem(at: url)
         }
+        thumbnailCache.removeObject(forKey: asset.id.uuidString as NSString)
         asset.deletedAt = Date()
+    }
+
+    // MARK: - Storage
+
+    /// Total bytes used by all local media files.
+    func totalStorageBytes() -> Int {
+        guard let enumerator = FileManager.default.enumerator(
+            at: baseURL,
+            includingPropertiesForKeys: [.fileSizeKey],
+            options: [.skipsHiddenFiles]
+        ) else { return 0 }
+
+        var total = 0
+        for case let url as URL in enumerator {
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            total += size
+        }
+        return total
+    }
+
+    // MARK: - CloudKit Upload
+
+    /// Uploads the local file for an asset to CloudKit.
+    /// - Parameters:
+    ///   - assetID: UUID of the asset (used as CKRecord name)
+    ///   - cardID: UUID of the owning card
+    ///   - mimeType: MIME type of the file
+    ///   - localFilename: Relative filename under the media base directory
+    /// - Returns: The CKRecord name (same as assetID.uuidString)
+    func uploadToCloudKit(
+        assetID: UUID,
+        cardID: UUID,
+        mimeType: String,
+        localFilename: String
+    ) async throws -> String {
+        let fileURL = baseURL.appendingPathComponent(localFilename)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            throw MediaServiceError.fileNotFound
+        }
+
+        let ckAsset  = CKAsset(fileURL: fileURL)
+        let recordID = CKRecord.ID(recordName: assetID.uuidString)
+        let record   = CKRecord(recordType: "MediaBlob", recordID: recordID)
+        record["assetID"]  = assetID.uuidString
+        record["cardID"]   = cardID.uuidString
+        record["mimeType"] = mimeType
+        record["fileData"] = ckAsset
+
+        let database = CKContainer(identifier: ckContainerID).privateCloudDatabase
+        do {
+            let saved = try await database.save(record)
+            return saved.recordID.recordName
+        } catch {
+            throw MediaServiceError.uploadFailed
+        }
+    }
+
+    // MARK: - CloudKit Download
+
+    /// Downloads the file for an asset from CloudKit and writes it to local storage.
+    /// - Parameters:
+    ///   - recordName: CKRecord name (ckAssetRecordName stored on MediaAsset)
+    ///   - localFilename: Relative path to write the file under the media base directory
+    func downloadFromCloudKit(recordName: String, to localFilename: String) async throws {
+        let database = CKContainer(identifier: ckContainerID).privateCloudDatabase
+        let recordID = CKRecord.ID(recordName: recordName)
+
+        let record: CKRecord
+        do {
+            record = try await database.record(for: recordID)
+        } catch {
+            throw MediaServiceError.downloadFailed
+        }
+
+        guard let ckAsset = record["fileData"] as? CKAsset,
+              let assetFileURL = ckAsset.fileURL
+        else {
+            throw MediaServiceError.downloadFailed
+        }
+
+        let data = try Data(contentsOf: assetFileURL)
+        let destURL = baseURL.appendingPathComponent(localFilename)
+        try FileManager.default.createDirectory(
+            at: destURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true)
+        try data.write(to: destURL)
     }
 
     // MARK: - Helpers

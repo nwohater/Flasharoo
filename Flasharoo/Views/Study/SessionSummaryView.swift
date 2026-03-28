@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SessionSummaryView: View {
     let stats: StudyViewModel.SessionStats
-    let deck: Deck
+    let sourceName: String
     let onDismiss: () -> Void
 
     var body: some View {
@@ -32,7 +32,7 @@ struct SessionSummaryView: View {
             Spacer()
         }
         .padding()
-        .navigationTitle(deck.name)
+        .navigationTitle(sourceName)
         .navigationBarTitleDisplayMode(.inline)
     }
 

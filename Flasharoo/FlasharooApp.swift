@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+import BackgroundTasks
+
+private let mediaSyncTaskID = "com.golackey.flasharoo.mediasync"
 
 @main
 struct FlasharooApp: App {
@@ -35,16 +38,64 @@ struct FlasharooApp: App {
         }
     }()
 
+    private var mediaSyncService: MediaSyncService {
+        MediaSyncService(container: container)
+    }
+
+    @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        registerBGTasks()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
         }
         .modelContainer(container)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                scheduleMediaSync()
+            }
+        }
 
         #if os(macOS)
         Settings {
             Text("Settings") // placeholder — replaced in Phase 12
         }
         #endif
+    }
+
+    // MARK: - Background Tasks
+
+    private func registerBGTasks() {
+        BGTaskScheduler.shared.register(
+            forTaskWithIdentifier: mediaSyncTaskID,
+            using: nil
+        ) { [self] task in
+            handleMediaSync(task: task as! BGProcessingTask)
+        }
+    }
+
+    private func scheduleMediaSync() {
+        let request = BGProcessingTaskRequest(identifier: mediaSyncTaskID)
+        request.requiresNetworkConnectivity = true
+        request.requiresExternalPower = false
+        try? BGTaskScheduler.shared.submit(request)
+    }
+
+    private func handleMediaSync(task: BGProcessingTask) {
+        let sync = MediaSyncService(container: container)
+
+        task.expirationHandler = {
+            // System is reclaiming time; nothing to cancel cleanly — next BGTask picks up
+        }
+
+        Task {
+            await sync.processUploadQueue()
+            await sync.processDownloadQueue()
+            task.setTaskCompleted(success: true)
+            scheduleMediaSync() // reschedule for next opportunity
+        }
     }
 }

@@ -8,6 +8,46 @@
 import SwiftUI
 import SwiftData
 
+// MARK: - Study source
+
+enum StudySource {
+    case deck(Deck)
+    case filteredDeck(name: String, cards: [Card], algorithm: SchedulerAlgorithm, rescheduleCards: Bool)
+
+    var displayName: String {
+        switch self {
+        case .deck(let d):                  return d.name
+        case .filteredDeck(let name, _, _, _): return name
+        }
+    }
+
+    var algorithm: SchedulerAlgorithm {
+        switch self {
+        case .deck(let d):                      return d.algorithmOverride ?? .fsrs
+        case .filteredDeck(_, _, let alg, _):   return alg
+        }
+    }
+
+    var rescheduleCards: Bool {
+        switch self {
+        case .deck:                              return true
+        case .filteredDeck(_, _, _, let r):      return r
+        }
+    }
+
+    var deckIfPresent: Deck? {
+        if case .deck(let d) = self { return d }
+        return nil
+    }
+
+    var preloadedCards: [Card]? {
+        if case .filteredDeck(_, let cards, _, _) = self { return cards }
+        return nil
+    }
+}
+
+// MARK: - ViewModel
+
 @Observable
 final class StudyViewModel {
 
@@ -18,17 +58,7 @@ final class StudyViewModel {
     private(set) var isSessionComplete = false
     private(set) var stats = SessionStats()
 
-    let deck: Deck
-
-    // MARK: - Private
-
-    private var queue: [Card] = []
-    private var queueIndex = 0
-    private var undoSnapshot: (card: Card, oldState: CardScheduleState, ratedAt: Date)?
-    private var cardAppearTime = Date()
-
-    private let modelContext: ModelContext
-    private let scheduler = SchedulerService()
+    let source: StudySource
 
     // MARK: - Session stats
 
@@ -43,10 +73,36 @@ final class StudyViewModel {
         var elapsed: TimeInterval { Date().timeIntervalSince(startTime) }
     }
 
+    // MARK: - Private
+
+    private var queue: [Card] = []
+    private var queueIndex = 0
+    private var undoSnapshot: (card: Card, oldState: CardScheduleState, ratedAt: Date)?
+    private var cardAppearTime = Date()
+
+    private let modelContext: ModelContext
+    private let scheduler = SchedulerService()
+
     // MARK: - Init
 
     init(deck: Deck, modelContext: ModelContext) {
-        self.deck = deck
+        self.source = .deck(deck)
+        self.modelContext = modelContext
+    }
+
+    init(
+        cards: [Card],
+        name: String,
+        algorithm: SchedulerAlgorithm = .fsrs,
+        rescheduleCards: Bool,
+        modelContext: ModelContext
+    ) {
+        self.source = .filteredDeck(
+            name: name,
+            cards: cards,
+            algorithm: algorithm,
+            rescheduleCards: rescheduleCards
+        )
         self.modelContext = modelContext
     }
 
@@ -54,14 +110,26 @@ final class StudyViewModel {
 
     func buildQueue() {
         let now = Date()
-        let active = deck.cards.filter {
-            $0.deletedAt == nil &&
-            $0.state != .suspended &&
-            $0.state != .buried
+
+        if let preloaded = source.preloadedCards {
+            // FilteredDeck: use the pre-fetched card list, filter suspended/buried
+            queue = preloaded.filter {
+                $0.deletedAt == nil &&
+                $0.state != .suspended &&
+                $0.state != .buried &&
+                $0.dueDate <= now
+            }
+        } else if let deck = source.deckIfPresent {
+            // Regular deck
+            let active = deck.cards.filter {
+                $0.deletedAt == nil &&
+                $0.state != .suspended &&
+                $0.state != .buried
+            }
+            queue = active
+                .filter { $0.dueDate <= now }
+                .sorted { $0.dueDate < $1.dueDate }
         }
-        queue = active
-            .filter { $0.dueDate <= now }
-            .sorted { $0.dueDate < $1.dueDate }
 
         queueIndex = 0
         currentCard = queue.first
@@ -81,7 +149,7 @@ final class StudyViewModel {
     func rate(_ rating: Int) {
         guard let card = currentCard else { return }
 
-        let algorithm = deck.algorithmOverride ?? .fsrs
+        let algorithm = source.algorithm
         let oldState = CardScheduleState(card: card)
         let result = scheduler.nextReview(for: oldState, rating: rating, algorithm: algorithm)
         let timeTaken = Date().timeIntervalSince(cardAppearTime)
@@ -89,29 +157,31 @@ final class StudyViewModel {
         // Save undo snapshot
         undoSnapshot = (card: card, oldState: oldState, ratedAt: Date())
 
-        // Apply scheduling state to card
-        card.sm2EaseFactor      = result.updatedCard.sm2EaseFactor
-        card.sm2Interval        = result.updatedCard.sm2Interval
-        card.sm2Repetitions     = result.updatedCard.sm2Repetitions
-        card.fsrsStability      = result.updatedCard.fsrsStability
-        card.fsrsDifficulty     = result.updatedCard.fsrsDifficulty
-        card.fsrsLastReviewDate = result.updatedCard.fsrsLastReviewDate
-        card.fsrsScheduledDays  = result.updatedCard.fsrsScheduledDays
-        card.state              = result.updatedState
-        card.dueDate            = result.nextReviewDate
-        card.modifiedAt         = Date()
+        if source.rescheduleCards {
+            // Apply scheduling state to card
+            card.sm2EaseFactor      = result.updatedCard.sm2EaseFactor
+            card.sm2Interval        = result.updatedCard.sm2Interval
+            card.sm2Repetitions     = result.updatedCard.sm2Repetitions
+            card.fsrsStability      = result.updatedCard.fsrsStability
+            card.fsrsDifficulty     = result.updatedCard.fsrsDifficulty
+            card.fsrsLastReviewDate = result.updatedCard.fsrsLastReviewDate
+            card.fsrsScheduledDays  = result.updatedCard.fsrsScheduledDays
+            card.state              = result.updatedState
+            card.dueDate            = result.nextReviewDate
+            card.modifiedAt         = Date()
 
-        // Append-only review record
-        let review = CardReview(
-            cardID: card.id,
-            rating: rating,
-            algorithm: algorithm,
-            intervalBefore: oldState.sm2Interval,
-            intervalAfter: result.interval,
-            timeTaken: timeTaken
-        )
-        modelContext.insert(review)
-        try? modelContext.save()
+            // Append-only review record
+            let review = CardReview(
+                cardID: card.id,
+                rating: rating,
+                algorithm: algorithm,
+                intervalBefore: oldState.sm2Interval,
+                intervalAfter: result.interval,
+                timeTaken: timeTaken
+            )
+            modelContext.insert(review)
+            try? modelContext.save()
+        }
 
         stats.totalReviewed += 1
         if rating >= 3 { stats.goodOrEasyCount += 1 }
@@ -131,17 +201,19 @@ final class StudyViewModel {
         let card = snap.card
         let old  = snap.oldState
 
-        card.sm2EaseFactor      = old.sm2EaseFactor
-        card.sm2Interval        = old.sm2Interval
-        card.sm2Repetitions     = old.sm2Repetitions
-        card.fsrsStability      = old.fsrsStability
-        card.fsrsDifficulty     = old.fsrsDifficulty
-        card.fsrsLastReviewDate = old.fsrsLastReviewDate
-        card.fsrsScheduledDays  = old.fsrsScheduledDays
-        card.state              = old.state
-        card.dueDate            = old.dueDate
-        card.modifiedAt         = Date()
-        try? modelContext.save()
+        if source.rescheduleCards {
+            card.sm2EaseFactor      = old.sm2EaseFactor
+            card.sm2Interval        = old.sm2Interval
+            card.sm2Repetitions     = old.sm2Repetitions
+            card.fsrsStability      = old.fsrsStability
+            card.fsrsDifficulty     = old.fsrsDifficulty
+            card.fsrsLastReviewDate = old.fsrsLastReviewDate
+            card.fsrsScheduledDays  = old.fsrsScheduledDays
+            card.state              = old.state
+            card.dueDate            = old.dueDate
+            card.modifiedAt         = Date()
+            try? modelContext.save()
+        }
 
         stats.totalReviewed    = max(0, stats.totalReviewed - 1)
         stats.goodOrEasyCount  = max(0, stats.goodOrEasyCount - 1)
@@ -158,7 +230,7 @@ final class StudyViewModel {
         guard let card = currentCard else { return }
         card.flag = card.flag == .none ? .red : .none
         card.modifiedAt = Date()
-        try? modelContext.save()
+        if source.rescheduleCards { try? modelContext.save() }
     }
 
     // MARK: - Interval hints
@@ -168,7 +240,7 @@ final class StudyViewModel {
             return IntervalHint(again: "—", hard: "—", good: "—", easy: "—")
         }
         let state = CardScheduleState(card: card)
-        switch deck.algorithmOverride ?? .fsrs {
+        switch source.algorithm {
         case .fsrs: return scheduler.fsrsIntervalHints(for: state)
         case .sm2:  return scheduler.sm2IntervalHints(for: state)
         }

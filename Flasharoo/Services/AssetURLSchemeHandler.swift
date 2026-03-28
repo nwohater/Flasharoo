@@ -6,6 +6,7 @@
 //
 //  Resolves asset://{assetID} URLs in WKWebView to local media files.
 //  Card HTML embeds drawings and images as <img src="asset://{assetID}">.
+//  When the local file is missing (pending CloudKit download), a placeholder image is served.
 //
 
 import Foundation
@@ -15,6 +16,26 @@ import UniformTypeIdentifiers
 final class AssetURLSchemeHandler: NSObject, WKURLSchemeHandler {
 
     private let mediaBase: URL
+
+    /// A minimal 40×40 gray placeholder PNG (1×1 pixel scaled via CSS).
+    /// Generated once at init and reused for all missing-asset responses.
+    private let placeholderData: Data = {
+        let size = CGSize(width: 40, height: 40)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            UIColor.systemGray4.setFill()
+            ctx.fill(CGRect(origin: .zero, size: size))
+            // Cloud icon in center
+            let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .light)
+            if let icon = UIImage(systemName: "icloud.and.arrow.down", withConfiguration: config) {
+                let tinted = icon.withTintColor(.systemGray2, renderingMode: .alwaysOriginal)
+                let x = (size.width - tinted.size.width) / 2
+                let y = (size.height - tinted.size.height) / 2
+                tinted.draw(at: CGPoint(x: x, y: y))
+            }
+        }
+        return image.pngData() ?? Data()
+    }()
 
     override init() {
         let appSupport = FileManager.default
@@ -37,30 +58,39 @@ final class AssetURLSchemeHandler: NSObject, WKURLSchemeHandler {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
 
-            guard let fileURL = self.findFile(for: assetID),
-                  let data    = try? Data(contentsOf: fileURL)
-            else {
-                urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist))
-                return
+            if let fileURL = self.findFile(for: assetID),
+               let data    = try? Data(contentsOf: fileURL) {
+                let mime = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType
+                           ?? "application/octet-stream"
+                self.respond(to: urlSchemeTask, url: url, data: data, mimeType: mime)
+            } else {
+                // File not present locally — serve placeholder while CloudKit downloads it
+                self.respond(to: urlSchemeTask, url: url,
+                             data: self.placeholderData, mimeType: "image/png")
             }
-
-            let mime = UTType(filenameExtension: fileURL.pathExtension)?.preferredMIMEType
-                       ?? "application/octet-stream"
-            let response = URLResponse(
-                url: url,
-                mimeType: mime,
-                expectedContentLength: data.count,
-                textEncodingName: nil
-            )
-            urlSchemeTask.didReceive(response)
-            urlSchemeTask.didReceive(data)
-            urlSchemeTask.didFinish()
         }
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: any WKURLSchemeTask) {}
 
-    // MARK: - File lookup
+    // MARK: - Helpers
+
+    private func respond(
+        to task: any WKURLSchemeTask,
+        url: URL,
+        data: Data,
+        mimeType: String
+    ) {
+        let response = URLResponse(
+            url: url,
+            mimeType: mimeType,
+            expectedContentLength: data.count,
+            textEncodingName: nil
+        )
+        task.didReceive(response)
+        task.didReceive(data)
+        task.didFinish()
+    }
 
     private func findFile(for assetID: String) -> URL? {
         guard let enumerator = FileManager.default.enumerator(

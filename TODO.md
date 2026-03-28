@@ -97,30 +97,29 @@
 
 ## Phase 8 — Media sync (CloudKit)
 
-- [ ] `MediaService` actor (save, load, thumbnail, delete, pendingUploads, pendingDownloads)
-- [ ] Local file storage layout (`Application Support/media/{cardID}/{assetID}.ext`)
-- [ ] Thumbnail generation and caching
-- [ ] CKAsset upload after local save (background `CKModifyRecordsOperation`)
-- [ ] CKAsset download on first card display when `syncState == .downloadNeeded`
-- [ ] Placeholder image while download is pending
-- [ ] Exponential backoff retry for failed uploads (1min / 5min / 30min)
-- [ ] `BGAppRefreshTask` registration and scheduling (`com.yourdomain.flasharoo.mediasync`)
-- [ ] Storage warning banner at >1 GB total media
+- [x] `MediaService` actor (save, load, thumbnail, delete, pendingUploads, pendingDownloads)
+- [x] Local file storage layout (`Application Support/media/{cardID}/{assetID}.ext`)
+- [x] Thumbnail generation and caching
+- [x] CKAsset upload after local save (`CKDatabase.save(_:)` async in `MediaSyncService`)
+- [x] CKAsset download on first card display when `syncState == .downloadNeeded`
+- [x] Placeholder image while download is pending
+- [x] Exponential backoff retry for failed uploads (1min / 5min / 30min)
+- [x] `BGProcessingTask` registration and scheduling (`com.golackey.flasharoo.mediasync`)
+- [x] Storage warning banner at >1 GB total media
 
 ---
 
 ## Phase 9 — Search and filtered decks
 
-- [ ] `SearchService` actor scaffold
-- [ ] Query language parser (tag:, deck:, state:, rated:, due:, created:, flag:, has:, front:, back:, bare text, `-` negation)
-- [ ] `SearchPredicate` → `NSCompoundPredicate` compiler
-- [ ] SQLite FTS5 fallback for full-text predicates
-- [ ] Paginated results (50 per page, load on scroll)
-- [ ] Search bar with real-time results in deck browser
-- [ ] Autocomplete for tags, deck names, predicate keywords
-- [ ] Query builder sheet (dropdown/date picker UI → query string)
-- [ ] `FilteredDeck` CRUD
-- [ ] Filtered deck as study source (respects `rescheduleCards` flag)
+- [x] `SearchService` actor scaffold
+- [x] Query language parser (tag:, deck:, state:, rated:, due:, created:, flag:, has:, front:, back:, bare text, `-` negation)
+- [x] In-memory predicate matching (SwiftData fetch + filter; FTS5 deferred to v2)
+- [x] Paginated results (50 per page, load on scroll)
+- [x] Search bar with real-time results in deck browser (`.searchable` + `SearchResultsView`)
+- [x] Autocomplete for tags, deck names, predicate keywords
+- [x] Query builder sheet (dropdown/date picker UI → query string)
+- [x] `FilteredDeck` CRUD (sidebar section + `FilteredDeckEditorSheet`)
+- [x] Filtered deck as study source (respects `rescheduleCards` flag, `StudySource` enum)
 
 ---
 
