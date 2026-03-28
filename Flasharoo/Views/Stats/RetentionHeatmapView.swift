@@ -78,7 +78,7 @@ struct RetentionHeatmapView: View {
             drawnMonths.insert(col)
             let x = CGFloat(col) * step
             let monthName = DateFormatter().shortMonthSymbols[month - 1]
-            var text = context.resolve(Text(monthName).font(.system(size: 9)).foregroundStyle(Color.secondary))
+            let text = context.resolve(Text(monthName).font(.system(size: 9)).foregroundStyle(Color.secondary))
             context.draw(text, at: CGPoint(x: x, y: 6), anchor: .leading)
         }
     }

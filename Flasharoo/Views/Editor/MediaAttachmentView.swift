@@ -13,6 +13,8 @@ import SwiftData
 struct MediaAttachmentView: View {
     let cardID: UUID
     @Binding var assets: [MediaAsset]
+    /// Called after a new image asset is saved, so the caller can insert an <img> tag.
+    var onImageAdded: ((UUID) -> Void)? = nil
 
     @Environment(\.modelContext) private var modelContext
 
@@ -98,6 +100,7 @@ struct MediaAttachmentView: View {
             modelContext.insert(asset)
             try? modelContext.save()
             assets.append(asset)
+            onImageAdded?(asset.id)
         } catch {
             errorMessage = error.localizedDescription
             showError = true

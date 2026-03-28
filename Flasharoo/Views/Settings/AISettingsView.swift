@@ -85,16 +85,12 @@ struct AISettingsView: View {
                 }
             }
 
-            Section {
-                Button("Save", action: { aiSettings.persist() })
-                    .disabled(aiSettings.provider == .none)
-            }
         }
         .navigationTitle("AI Assistant")
-        .onChange(of: aiSettings.provider) { _, _ in
-            testResult = nil
-            aiSettings.persist()
-        }
+        .onChange(of: aiSettings.provider)  { _, _ in testResult = nil; aiSettings.persist() }
+        .onChange(of: aiSettings.baseURL)   { _, _ in aiSettings.persist() }
+        .onChange(of: aiSettings.modelName) { _, _ in aiSettings.persist() }
+        .onChange(of: aiSettings.apiKey)    { _, _ in aiSettings.persist() }
     }
 
     private func runTest() async {

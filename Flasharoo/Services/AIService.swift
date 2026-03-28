@@ -48,10 +48,26 @@ enum AIServiceError: LocalizedError {
 
 actor AIService {
 
-    private let settings: AISettings
+    /// Immutable, Sendable snapshot of AISettings captured at init time.
+    /// Avoids crossing the MainActor boundary from inside the actor's methods.
+    private struct Config: Sendable {
+        let provider: AIProvider
+        let baseURL: String
+        let model: String
+        let apiKey: String
+        var isConfigured: Bool { provider != .none }
+    }
 
+    private let config: Config
+
+    @MainActor
     init(settings: AISettings) {
-        self.settings = settings
+        config = Config(
+            provider: settings.provider,
+            baseURL: settings.resolvedBaseURL,
+            model: settings.resolvedModel,
+            apiKey: settings.apiKey
+        )
     }
 
     // MARK: - Public API
@@ -62,36 +78,96 @@ actor AIService {
         return reply
     }
 
-    /// Generates a deck of flash cards on `topic`.
-    /// Returns an array of AICardData parsed from the AI's JSON response.
-    func generateDeck(topic: String, cardCount: Int) async throws -> [AICardData] {
-        let prompt = """
-        Generate exactly \(cardCount) flash cards about: \(topic)
+    /// Generates a deck of flash cards on `topic` in batches of `batchSize`.
+    /// `onProgress` is called on the calling actor after each batch with (completed, total).
+    func generateDeck(
+        topic: String,
+        cardCount: Int,
+        existingFronts: [String] = [],
+        batchSize: Int = 5,
+        onProgress: (@Sendable (Int, Int) -> Void)? = nil
+    ) async throws -> [AICardData] {
+        var all: [AICardData] = []
+        var remaining = cardCount
 
-        Return ONLY valid JSON — no markdown fences, no commentary.
-        Format:
-        [
-          {"front": "question text", "back": "answer text", "tags": ["tag1", "tag2"]},
-          ...
-        ]
+        // Build the existing-questions block once (shared across all batches)
+        let existingBlock: String
+        if existingFronts.isEmpty {
+            existingBlock = ""
+        } else {
+            let list = existingFronts.enumerated()
+                .map { "\($0.offset + 1). \($0.element)" }
+                .joined(separator: "\n")
+            existingBlock = """
 
-        Rules:
-        - Each card must have front, back, and tags (tags may be empty []).
-        - Front: concise question or term (≤ 120 chars).
-        - Back: clear, complete answer (≤ 400 chars).
-        - Cover the topic thoroughly. Vary difficulty from basic to advanced.
-        """
+            EXISTING QUESTIONS ALREADY IN THE DECK — do not repeat or rephrase any of these:
+            \(list)
 
-        let raw = try await sendPrompt(prompt)
-        return try parseCards(from: raw)
+            """
+        }
+
+        while remaining > 0 {
+            let thisBatch = min(batchSize, remaining)
+
+            // Also include cards generated so far this session
+            let sessionFronts = all.map { $0.front }
+            let sessionBlock: String
+            if sessionFronts.isEmpty {
+                sessionBlock = ""
+            } else {
+                let list = sessionFronts.map { "- \($0)" }.joined(separator: "\n")
+                sessionBlock = """
+
+                ALSO avoid repeating these questions generated earlier in this session:
+                \(list)
+
+                """
+            }
+
+            let prompt = """
+            Generate \(thisBatch) flashcards based on these instructions:
+            \(topic)
+            \(existingBlock)\(sessionBlock)
+            Output ONLY a JSON array like this example (no other text):
+            [
+              {"front": "What does async/await do in C#?", "back": "It allows writing asynchronous code that reads like synchronous code, using the Task-based pattern.", "tags": ["async", "csharp"]},
+              {"front": "What is a delegate in C#?", "back": "A type-safe function pointer that holds a reference to a method with a specific signature.", "tags": ["delegate", "csharp"]}
+            ]
+
+            Requirements (strictly enforced):
+            - Output the JSON array only. Nothing before [. Nothing after ].
+            - Exactly \(thisBatch) objects.
+            - "front": a clear question or prompt (max 120 chars). Must not be empty.
+            - "back": a complete, accurate answer with enough detail to be useful (min 15 chars, max 400 chars). Must not be empty or a placeholder.
+            - "tags": array of short keyword strings (can be empty []).
+            - Every card must have a real, non-empty answer in "back". Do not output a card if you cannot provide a complete answer.
+            """
+
+            let raw   = try await sendPrompt(prompt)
+            let batch = try parseCards(from: raw)
+            all.append(contentsOf: batch)
+            remaining -= batch.count
+            onProgress?(all.count, cardCount)
+        }
+
+        return all
     }
+
+    // MARK: - System instruction (injected into every provider)
+
+    private let systemInstruction = """
+    You are a flashcard JSON API. You output ONLY raw JSON — no markdown, no code fences, \
+    no explanation, no commentary before or after. \
+    Your entire response must be a single valid JSON array starting with [ and ending with ]. \
+    Never wrap the array in an object. Never use ```json or ``` fences.
+    """
 
     // MARK: - Routing
 
     private func sendPrompt(_ prompt: String) async throws -> String {
-        guard settings.isConfigured else { throw AIServiceError.notConfigured }
+        guard config.isConfigured else { throw AIServiceError.notConfigured }
 
-        switch settings.provider {
+        switch config.provider {
         case .none:
             throw AIServiceError.notConfigured
         case .claude:
@@ -106,13 +182,16 @@ actor AIService {
     // MARK: - OpenAI-compatible
 
     private func sendOpenAICompatible(prompt: String) async throws -> String {
-        guard let url = URL(string: settings.resolvedBaseURL + "/v1/chat/completions") else {
+        guard let url = URL(string: config.baseURL + "/v1/chat/completions") else {
             throw AIServiceError.invalidURL
         }
 
         let body: [String: Any] = [
-            "model": settings.resolvedModel,
-            "messages": [["role": "user", "content": prompt]],
+            "model": config.model,
+            "messages": [
+                ["role": "system", "content": systemInstruction],
+                ["role": "user",   "content": prompt]
+            ],
             "temperature": 0.7,
             "max_tokens": 8192
         ]
@@ -120,8 +199,8 @@ actor AIService {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if !settings.apiKey.isEmpty {
-            request.setValue("Bearer \(settings.apiKey)", forHTTPHeaderField: "Authorization")
+        if !config.apiKey.isEmpty {
+            request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -141,20 +220,21 @@ actor AIService {
     // MARK: - Claude (Anthropic Messages API)
 
     private func sendClaude(prompt: String) async throws -> String {
-        guard let url = URL(string: settings.resolvedBaseURL + "/v1/messages") else {
+        guard let url = URL(string: config.baseURL + "/v1/messages") else {
             throw AIServiceError.invalidURL
         }
 
         let body: [String: Any] = [
-            "model": settings.resolvedModel,
+            "model": config.model,
             "max_tokens": 8192,
+            "system": systemInstruction,
             "messages": [["role": "user", "content": prompt]]
         ]
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(settings.apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue(config.apiKey, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -173,15 +253,16 @@ actor AIService {
     // MARK: - Gemini (Google Generative Language API)
 
     private func sendGemini(prompt: String) async throws -> String {
-        let model = settings.resolvedModel
-        let key   = settings.apiKey
-        let urlString = "\(settings.resolvedBaseURL)/v1beta/models/\(model):generateContent?key=\(key)"
+        let model = config.model
+        let key   = config.apiKey
+        let urlString = "\(config.baseURL)/v1beta/models/\(model):generateContent?key=\(key)"
 
         guard let url = URL(string: urlString) else {
             throw AIServiceError.invalidURL
         }
 
         let body: [String: Any] = [
+            "system_instruction": ["parts": [["text": systemInstruction]]],
             "contents": [["parts": [["text": prompt]]]],
             "generationConfig": ["maxOutputTokens": 8192, "temperature": 0.7]
         ]
@@ -215,20 +296,26 @@ actor AIService {
         }
     }
 
-    /// Strips markdown code fences then decodes the JSON array.
+    /// Extracts a JSON array of card objects from raw AI output.
+    /// Handles markdown fences, leading/trailing prose, and object-wrapped arrays.
     private func parseCards(from raw: String) throws -> [AICardData] {
         var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Strip ```json ... ``` or ``` ... ```
+        // Strip all variants of code fences: ```json, ```JSON, ``` etc.
         if text.hasPrefix("```") {
             let lines = text.components(separatedBy: "\n")
-            let stripped = lines.dropFirst().dropLast()
-            text = stripped.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            // Drop first line (fence open) and last non-empty line (fence close)
+            var inner = Array(lines.dropFirst())
+            if inner.last?.trimmingCharacters(in: .whitespaces).hasPrefix("```") == true {
+                inner = Array(inner.dropLast())
+            }
+            text = inner.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        // Find the JSON array bounds in case there's surrounding prose
+        // Extract the first [...] block, ignoring any surrounding prose
         if let start = text.firstIndex(of: "["),
-           let end = text.lastIndex(of: "]") {
+           let end   = text.lastIndex(of: "]"),
+           start <= end {
             text = String(text[start...end])
         }
 
@@ -236,8 +323,15 @@ actor AIService {
             throw AIServiceError.parseError("Could not encode response as UTF-8")
         }
 
-        guard let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            throw AIServiceError.parseError("Response is not a JSON array")
+        // Try parsing as a direct array first, then as a wrapped object {"cards": [...]}
+        let array: [[String: Any]]
+        if let direct = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+            array = direct
+        } else if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let nested = (obj["cards"] ?? obj["flashcards"] ?? obj["data"]) as? [[String: Any]] {
+            array = nested
+        } else {
+            throw AIServiceError.parseError("Response is not a JSON array — raw: \(text.prefix(200))")
         }
 
         var cards: [AICardData] = []
@@ -245,10 +339,22 @@ actor AIService {
             guard let front = obj["front"] as? String,
                   let back  = obj["back"]  as? String
             else {
-                throw AIServiceError.parseError("Card \(i) missing 'front' or 'back' field")
+                print("[AIService] Skipping card \(i) — missing front/back keys")
+                continue
+            }
+            let trimFront = front.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimBack  = back.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            guard !trimFront.isEmpty else {
+                print("[AIService] Skipping card \(i) — empty front")
+                continue
+            }
+            guard trimBack.count >= 5 else {
+                print("[AIService] Skipping card \(i) — back too short (\(trimBack.count) chars): \"\(trimBack)\"")
+                continue
             }
             let tags = obj["tags"] as? [String] ?? []
-            cards.append(AICardData(front: front, back: back, tags: tags))
+            cards.append(AICardData(front: trimFront, back: trimBack, tags: tags))
         }
 
         guard !cards.isEmpty else {

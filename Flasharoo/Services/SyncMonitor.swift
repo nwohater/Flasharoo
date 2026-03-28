@@ -30,10 +30,11 @@ final class SyncMonitor {
     private(set) var state: SyncState = .idle
     private(set) var lastSyncDate: Date?
 
-    nonisolated(unsafe) private var observer: NSObjectProtocol?
-
     init() {
-        observer = NotificationCenter.default.addObserver(
+        // SyncMonitor lives for the entire app lifetime, so we don't need to
+        // store or remove the observer token. The [weak self] closure is a
+        // no-op if the object is ever deallocated, preventing any retain cycle.
+        NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
             queue: nil
@@ -45,12 +46,6 @@ final class SyncMonitor {
             Task { @MainActor [weak self] in
                 self?.process(event: event)
             }
-        }
-    }
-
-    deinit {
-        if let observer {
-            NotificationCenter.default.removeObserver(observer)
         }
     }
 

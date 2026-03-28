@@ -21,6 +21,8 @@ final class Deck {
     var createdAt: Date
     var modifiedAt: Date
     var deletedAt: Date?
+    /// Original AI instructions used to generate this deck. Non-nil means deck was AI-generated.
+    var aiPrompt: String?
 
     @Relationship(deleteRule: .cascade) var cards: [Card] = []
     @Relationship(deleteRule: .cascade) var gestureSettings: GestureSettings?

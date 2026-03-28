@@ -196,7 +196,7 @@ actor BackgroundDataActor: ModelActor {
 
         // ── Average retention (last 30 days) ───────────────────────────────────
         let last30 = dailySummaries.suffix(30)
-        let totalLast30 = last30.reduce(0) { $0 + $1.totalCount }
+        let totalLast30 = last30.reduce(0) { $0 + $1.newCount + $1.learningCount + $1.reviewCount }
         let successLast30 = last30.reduce(0) { $0 + $1.successCount }
         let avgRetention = totalLast30 == 0 ? 1.0 : Double(successLast30) / Double(totalLast30)
 
@@ -258,7 +258,7 @@ actor BackgroundDataActor: ModelActor {
         calendar: Calendar,
         now: Date
     ) -> (current: Int, longest: Int) {
-        let studiedDays = Set(summaries.filter { $0.totalCount > 0 }.map { $0.date })
+        let studiedDays = Set(summaries.filter { ($0.newCount + $0.learningCount + $0.reviewCount) > 0 }.map { $0.date })
         let today = calendar.startOfDay(for: now)
 
         // Current streak

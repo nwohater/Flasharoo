@@ -13,8 +13,8 @@ struct StudyView: View {
     @State private var vm: StudyViewModel
     @State private var showingEditor = false
 
-    init(deck: Deck, modelContext: ModelContext) {
-        _vm = State(initialValue: StudyViewModel(deck: deck, modelContext: modelContext))
+    init(deck: Deck, modelContext: ModelContext, cramMode: Bool = false) {
+        _vm = State(initialValue: StudyViewModel(deck: deck, modelContext: modelContext, cramMode: cramMode))
     }
 
     init(
@@ -36,9 +36,12 @@ struct StudyView: View {
     var body: some View {
         Group {
             if vm.isSessionComplete {
-                SessionSummaryView(stats: vm.stats, sourceName: vm.source.displayName) {
-                    dismiss()
-                }
+                SessionSummaryView(
+                    stats: vm.stats,
+                    sourceName: vm.source.displayName,
+                    onStudyAgain: { vm.restartSession() },
+                    onDismiss: { dismiss() }
+                )
             } else if vm.currentCard != nil {
                 studyContent
             } else {
@@ -134,11 +137,12 @@ struct StudyView: View {
             } label: {
                 Label("Undo", systemImage: "arrow.uturn.backward")
             }
+            .disabled(!vm.canUndo)
 
             Button {
                 vm.toggleFlag()
             } label: {
-                let flagged = vm.currentCard?.flag != .none
+                let flagged = vm.currentCard?.flag != CardFlag.none
                 Label("Flag", systemImage: flagged ? "flag.fill" : "flag")
                     .foregroundStyle(flagged ? Color.red : Color.primary)
             }

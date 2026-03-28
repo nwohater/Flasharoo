@@ -1,72 +1,56 @@
 //
-//  AIDeckGeneratorSheet.swift
+//  AIExpandDeckSheet.swift
 //  Flasharoo
 //
 //  Created by Brandon Lackey on 3/28/26.
 //
-//  Sheet that lets the user describe a topic, pick a card count, then
-//  calls AIService to generate and save a new Deck with Cards.
+//  Generates additional cards for an existing AI deck using the saved prompt.
 //
 
 import SwiftUI
 import SwiftData
 
-struct AIDeckGeneratorSheet: View {
+struct AIExpandDeckSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(AISettings.self) private var aiSettings
 
-    @State private var deckName = ""
-    @State private var instructions = ""
-    @State private var cardCount = 20
+    let deck: Deck
+
+    @State private var instructions: String
+    @State private var cardCount = 10
     @State private var isGenerating = false
     @State private var generatedCount = 0
     @State private var errorMessage: String?
     @State private var successMessage: String?
 
+    init(deck: Deck) {
+        self.deck = deck
+        _instructions = State(initialValue: deck.aiPrompt ?? "")
+    }
+
     private var canGenerate: Bool {
-        !deckName.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !instructions.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !isGenerating
+        !instructions.trimmingCharacters(in: .whitespaces).isEmpty && !isGenerating
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Deck Name") {
-                    TextField("e.g. Flutter Development", text: $deckName)
-                }
-
                 Section {
-                    TextField(
-                        "e.g. Build me 50 cards covering Flutter widgets, state management, and navigation. Focus on practical examples.",
-                        text: $instructions,
-                        axis: .vertical
-                    )
-                    .lineLimit(4...8)
+                    TextField("Instructions", text: $instructions, axis: .vertical)
+                        .lineLimit(4...8)
                 } header: {
                     Text("Instructions")
                 } footer: {
-                    Text("Describe what you want — topic, difficulty, style, focus areas.")
+                    Text("Edit or refine the prompt before adding more cards.")
                 }
 
                 Section {
                     Stepper("\(cardCount) cards", value: $cardCount, in: 5...50, step: 5)
                 } header: {
-                    Text("Card Count")
+                    Text("Cards to Add")
                 } footer: {
-                    Text("Maximum 50 cards per generation.")
-                }
-
-                Section {
-                    Label {
-                        Text("AI-generated content may contain inaccuracies, outdated information, or errors. Always verify important facts from trusted sources before relying on these cards for study.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(.orange)
-                    }
+                    Text("Will be added to \"\(deck.name)\" — currently \(deck.cards.filter { $0.deletedAt == nil }.count) cards.")
                 }
 
                 if let error = errorMessage {
@@ -100,7 +84,7 @@ struct AIDeckGeneratorSheet: View {
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
-                                Label("Generate Deck", systemImage: "wand.and.stars")
+                                Label("Add Cards", systemImage: "wand.and.stars")
                             }
                             Spacer()
                         }
@@ -108,7 +92,7 @@ struct AIDeckGeneratorSheet: View {
                     .disabled(!canGenerate)
                 }
             }
-            .navigationTitle("AI Deck Generator")
+            .navigationTitle("Add AI Cards")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(successMessage != nil ? "Done" : "Cancel") { dismiss() }
@@ -121,25 +105,29 @@ struct AIDeckGeneratorSheet: View {
     // MARK: - Generation
 
     private func generate() async {
-        let name   = deckName.trimmingCharacters(in: .whitespaces)
         let prompt = instructions.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty, !prompt.isEmpty else { return }
+        guard !prompt.isEmpty else { return }
 
         isGenerating   = true
         generatedCount = 0
         errorMessage   = nil
         successMessage = nil
 
+        let existingFronts = deck.cards
+            .filter { $0.deletedAt == nil }
+            .map { $0.front }
+
         let service = AIService(settings: aiSettings)
         do {
             let cards = try await service.generateDeck(
                 topic: prompt,
                 cardCount: cardCount,
+                existingFronts: existingFronts,
                 onProgress: { completed, _ in
                     Task { @MainActor in generatedCount = completed }
                 }
             )
-            await MainActor.run { insertDeck(name: name, prompt: prompt, cards: cards) }
+            await MainActor.run { appendCards(cards, prompt: prompt) }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -148,15 +136,7 @@ struct AIDeckGeneratorSheet: View {
     }
 
     @MainActor
-    private func insertDeck(name: String, prompt: String, cards: [AICardData]) {
-        let descriptor = FetchDescriptor<Deck>()
-        let existing = (try? modelContext.fetch(descriptor)) ?? []
-        let sortIndex = existing.filter { $0.deletedAt == nil }.count
-
-        let deck = Deck(name: name, sortIndex: sortIndex)
-        deck.aiPrompt = prompt
-        modelContext.insert(deck)
-
+    private func appendCards(_ cards: [AICardData], prompt: String) {
         for cardData in cards {
             let card = Card(
                 deckID: deck.id,
@@ -167,11 +147,10 @@ struct AIDeckGeneratorSheet: View {
             card.deck = deck
             modelContext.insert(card)
         }
-
+        // Update saved prompt in case user refined it
+        deck.aiPrompt = prompt
         try? modelContext.save()
-        successMessage = "Created \"\(name)\" with \(cards.count) cards."
-        deckName     = ""
-        instructions = ""
+        successMessage = "Added \(cards.count) card\(cards.count == 1 ? "" : "s") to \"\(deck.name)\"."
     }
 
     private func escapeHTML(_ text: String) -> String {

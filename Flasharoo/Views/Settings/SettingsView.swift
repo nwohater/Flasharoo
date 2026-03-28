@@ -12,6 +12,7 @@ import SwiftUI
 import SwiftData
 
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(AISettings.self) private var aiSettings
     @Query private var allSettings: [UserSettings]
@@ -29,6 +30,11 @@ struct SettingsView: View {
                 aiSection
             }
             .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { dismiss() }
+            }
+        }
         }
     }
 

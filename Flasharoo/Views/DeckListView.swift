@@ -28,6 +28,7 @@ struct DeckListView: View {
     @State private var showingGlobalStats = false
     @State private var showingSettings = false
     @State private var showingAIGenerator = false
+    @State private var deckToDelete: Deck?
 
     @State private var searchVM: SearchViewModel?
 
@@ -82,6 +83,21 @@ struct DeckListView: View {
             AIDeckGeneratorSheet()
                 .environment(aiSettings)
         }
+        .alert("Delete Deck", isPresented: Binding(
+            get: { deckToDelete != nil },
+            set: { if !$0 { deckToDelete = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let deck = deckToDelete {
+                    deleteDeck(deck)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let deck = deckToDelete {
+                Text("Delete \"\(deck.name)\" and all \(deck.cards.filter { $0.deletedAt == nil }.count) cards? This cannot be undone.")
+            }
+        }
         .task {
             if searchVM == nil {
                 searchVM = SearchViewModel(container: modelContext.container)
@@ -97,6 +113,13 @@ struct DeckListView: View {
                 ForEach(activeDecks) { deck in
                     NavigationLink(value: deck) {
                         DeckRowView(deck: deck)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            deckToDelete = deck
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
                 }
             }
@@ -180,6 +203,15 @@ struct DeckListView: View {
         modelContext.insert(deck)
         selectedDeck = deck
         newDeckName = ""
+    }
+
+    private func deleteDeck(_ deck: Deck) {
+        if selectedDeck?.id == deck.id { selectedDeck = nil }
+        let now = Date()
+        deck.cards.forEach { $0.deletedAt = now }
+        deck.deletedAt = now
+        try? modelContext.save()
+        deckToDelete = nil
     }
 }
 

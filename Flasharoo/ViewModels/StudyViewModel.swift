@@ -85,9 +85,12 @@ final class StudyViewModel {
 
     // MARK: - Init
 
-    init(deck: Deck, modelContext: ModelContext) {
+    private let cramMode: Bool
+
+    init(deck: Deck, modelContext: ModelContext, cramMode: Bool = false) {
         self.source = .deck(deck)
         self.modelContext = modelContext
+        self.cramMode = cramMode
     }
 
     init(
@@ -104,6 +107,7 @@ final class StudyViewModel {
             rescheduleCards: rescheduleCards
         )
         self.modelContext = modelContext
+        self.cramMode = false
     }
 
     // MARK: - Session management
@@ -126,9 +130,9 @@ final class StudyViewModel {
                 $0.state != .suspended &&
                 $0.state != .buried
             }
-            queue = active
-                .filter { $0.dueDate <= now }
-                .sorted { $0.dueDate < $1.dueDate }
+            queue = cramMode
+                ? active.sorted { $0.dueDate < $1.dueDate }
+                : active.filter { $0.dueDate <= now }.sorted { $0.dueDate < $1.dueDate }
         }
 
         queueIndex = 0
@@ -136,6 +140,33 @@ final class StudyViewModel {
         isSessionComplete = queue.isEmpty
         cardAppearTime = Date()
     }
+
+    /// Restarts with ALL non-suspended cards regardless of due date (cram mode).
+    func restartSession() {
+        let allCards: [Card]
+        if let preloaded = source.preloadedCards {
+            allCards = preloaded.filter {
+                $0.deletedAt == nil && $0.state != .suspended && $0.state != .buried
+            }
+        } else if let deck = source.deckIfPresent {
+            allCards = deck.cards.filter {
+                $0.deletedAt == nil && $0.state != .suspended && $0.state != .buried
+            }.sorted { $0.dueDate < $1.dueDate }
+        } else {
+            allCards = []
+        }
+
+        queue            = allCards
+        queueIndex       = 0
+        currentCard      = allCards.first
+        isSessionComplete = allCards.isEmpty
+        isAnswerRevealed  = false
+        undoSnapshot      = nil
+        stats             = SessionStats()
+        cardAppearTime    = Date()
+    }
+
+    var canUndo: Bool { undoSnapshot != nil }
 
     var remainingCount: Int { max(0, queue.count - queueIndex) }
 

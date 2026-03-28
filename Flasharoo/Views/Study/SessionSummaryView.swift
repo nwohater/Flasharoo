@@ -10,6 +10,7 @@ import SwiftUI
 struct SessionSummaryView: View {
     let stats: StudyViewModel.SessionStats
     let sourceName: String
+    let onStudyAgain: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
@@ -25,8 +26,12 @@ struct SessionSummaryView: View {
 
             statsGrid
 
-            Button("Done") { onDismiss() }
+            Button("Study Again") { onStudyAgain() }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+            Button("Done") { onDismiss() }
+                .buttonStyle(.bordered)
                 .controlSize(.large)
 
             Spacer()

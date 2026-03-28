@@ -14,6 +14,10 @@ struct DeckDetailView: View {
 
     @State private var showingNewCard = false
     @State private var showingStats = false
+    @State private var showingCram = false
+    @State private var showingDeleteConfirm = false
+    @State private var showingAIExpand = false
+    @Environment(AISettings.self) private var aiSettings
 
     private var activeCards: [Card] { deck.cards.filter { $0.deletedAt == nil } }
     private var dueCount: Int {
@@ -45,6 +49,15 @@ struct DeckDetailView: View {
                 }
                 .disabled(dueCount == 0)
             }
+            if totalCount > 0 {
+                ToolbarItem(placement: .secondaryAction) {
+                    NavigationLink {
+                        StudyView(deck: deck, modelContext: modelContext, cramMode: true)
+                    } label: {
+                        Label("Study All", systemImage: "rectangle.stack.fill")
+                    }
+                }
+            }
             ToolbarItem(placement: .secondaryAction) {
                 Button {
                     showingNewCard = true
@@ -59,9 +72,44 @@ struct DeckDetailView: View {
                     Label("Statistics", systemImage: "chart.bar.xaxis")
                 }
             }
+            if deck.aiPrompt != nil && aiSettings.isConfigured {
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        showingAIExpand = true
+                    } label: {
+                        Label("Add AI Cards", systemImage: "wand.and.stars")
+                    }
+                }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button(role: .destructive) {
+                    showingDeleteConfirm = true
+                } label: {
+                    Label("Delete Deck", systemImage: "trash")
+                }
+            }
         }
         .sheet(isPresented: $showingNewCard) {
             CardEditorView(deck: deck)
+        }
+        .sheet(isPresented: $showingAIExpand) {
+            AIExpandDeckSheet(deck: deck)
+                .environment(aiSettings)
+        }
+        .confirmationDialog(
+            "Delete \"\(deck.name)\"?",
+            isPresented: $showingDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Deck & All Cards", role: .destructive) {
+                let now = Date()
+                deck.cards.forEach { $0.deletedAt = now }
+                deck.deletedAt = now
+                try? modelContext.save()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete \(totalCount) card\(totalCount == 1 ? "" : "s"). This cannot be undone.")
         }
         .sheet(isPresented: $showingStats) {
             NavigationStack {

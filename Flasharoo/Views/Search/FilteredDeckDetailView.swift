@@ -154,7 +154,7 @@ private struct _FilteredDeckStudyLauncher: View {
         }
         .task {
             let ids = await searchVM.fetchStudyCards(for: filteredDeck)
-            let fetched = ids.compactMap { try? modelContext.model(for: $0) as? Card }
+            let fetched = ids.compactMap { modelContext.model(for: $0) as? Card }
             cards = fetched
             isLoading = false
         }

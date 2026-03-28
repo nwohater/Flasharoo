@@ -59,7 +59,14 @@ struct CardEditorView: View {
                 }
 
                 Section("Media") {
-                    MediaAttachmentView(cardID: pendingCardID, assets: $assets)
+                    MediaAttachmentView(cardID: pendingCardID, assets: $assets) { assetID in
+                        let tag = "<img src=\"asset://\(assetID.uuidString)\">"
+                        if focusedField == .back {
+                            back  += (back.isEmpty  ? "" : "\n") + tag
+                        } else {
+                            front += (front.isEmpty ? "" : "\n") + tag
+                        }
+                    }
                 }
             }
             .navigationTitle(isNew ? "New Card" : "Edit Card")
