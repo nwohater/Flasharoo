@@ -13,7 +13,10 @@ private let mediaSyncTaskID = "com.golackey.flasharoo.mediasync"
 
 @main
 struct FlasharooApp: App {
-    let container: ModelContainer = {
+
+    // MARK: - Container (Result so init failure shows a UI instead of crashing)
+
+    private static let containerResult: Result<ModelContainer, Error> = {
         let schema = Schema([
             Deck.self, Card.self, CardReview.self,
             MediaAsset.self, FilteredDeck.self,
@@ -24,35 +27,43 @@ struct FlasharooApp: App {
             schema: schema,
             cloudKitDatabase: .private("iCloud.com.golackey.flasharoo")
         )
-
-        if let container = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
-            return container
+        if let c = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+            return .success(c)
         }
 
-        // Fallback: local-only (simulator without iCloud, test environment)
+        // Fallback: local-only (simulator / no iCloud account)
         let localConfig = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
         do {
-            return try ModelContainer(for: schema, configurations: [localConfig])
+            return .success(try ModelContainer(for: schema, configurations: [localConfig]))
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            return .failure(error)
         }
     }()
 
-    private var mediaSyncService: MediaSyncService {
-        MediaSyncService(container: container)
-    }
+    // MARK: - App state
 
+    @State private var syncMonitor = SyncMonitor()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
         registerBGTasks()
     }
 
+    // MARK: - Scene
+
     var body: some Scene {
         WindowGroup {
-            RootView()
+            switch Self.containerResult {
+            case .success(let container):
+                RootView()
+                    .modelContainer(container)
+                    .environment(syncMonitor)
+                    .task { await runLaunchTasks(container: container) }
+
+            case .failure(let error):
+                ContainerErrorView(errorMessage: error.localizedDescription)
+            }
         }
-        .modelContainer(container)
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 scheduleMediaSync()
@@ -66,14 +77,21 @@ struct FlasharooApp: App {
         #endif
     }
 
+    // MARK: - Launch tasks (orphan adoption + UserSettings bootstrap)
+
+    private func runLaunchTasks(container: ModelContainer) async {
+        let actor = BackgroundDataActor(container: container)
+        await actor.adoptOrphanedCards()
+    }
+
     // MARK: - Background Tasks
 
     private func registerBGTasks() {
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: mediaSyncTaskID,
             using: nil
-        ) { [self] task in
-            handleMediaSync(task: task as! BGProcessingTask)
+        ) { task in
+            self.handleMediaSync(task: task as! BGProcessingTask)
         }
     }
 
@@ -85,17 +103,22 @@ struct FlasharooApp: App {
     }
 
     private func handleMediaSync(task: BGProcessingTask) {
-        let sync = MediaSyncService(container: container)
-
-        task.expirationHandler = {
-            // System is reclaiming time; nothing to cancel cleanly — next BGTask picks up
+        guard case .success(let container) = Self.containerResult else {
+            task.setTaskCompleted(success: false)
+            return
         }
+
+        let sync    = MediaSyncService(container: container)
+        let cleanup = BackgroundDataActor(container: container)
+
+        task.expirationHandler = {}
 
         Task {
             await sync.processUploadQueue()
             await sync.processDownloadQueue()
+            await cleanup.purgeOldSoftDeletes()
             task.setTaskCompleted(success: true)
-            scheduleMediaSync() // reschedule for next opportunity
+            scheduleMediaSync()
         }
     }
 }

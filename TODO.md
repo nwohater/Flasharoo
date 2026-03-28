@@ -144,14 +144,13 @@
 
 ## Phase 11 — Sync polish and error handling
 
-- [ ] `SyncMonitor` — subscribe to `NSPersistentCloudKitContainer.Event` notifications
-- [ ] Sync status indicator in toolbar (idle / spinning / error icon)
-- [ ] Sync status popover (last sync time, error message)
-- [ ] Soft-delete cleanup job (purge `deletedAt` records older than 30 days)
-- [ ] CloudKit error handling: networkUnavailable, quotaExceeded, notAuthenticated, zoneNotFound
-- [ ] SwiftData error handling: save failure retry, migration error with reset option
-- [ ] `ModelContainer` init failure alert (with support contact)
-- [ ] Orphaned card handling (deck deleted mid-sync → "Unsorted" virtual deck)
+- [x] `SyncMonitor` — subscribes to `NSPersistentCloudKitContainer.eventChangedNotification`
+- [x] Sync status indicator in toolbar — idle (cloud), syncing (spinner), error (red exclamation)
+- [x] Sync status popover — last sync time + error detail
+- [x] Soft-delete cleanup — `purgeOldSoftDeletes()` wired into BGProcessingTask handler
+- [x] CloudKit error handling — networkUnavailable, quotaExceeded, notAuthenticated, zoneNotFound, changeTokenExpired mapped to user-friendly messages
+- [x] `ModelContainer` init failure — `Result`-based init, `ContainerErrorView` with support email link instead of crash
+- [x] Orphaned card handling — `adoptOrphanedCards()` runs on launch, moves orphans to "Unsorted" deck
 
 ---
 

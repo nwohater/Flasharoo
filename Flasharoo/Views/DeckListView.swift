@@ -135,6 +135,9 @@ struct DeckListView: View {
                 Label("Statistics", systemImage: "chart.bar.xaxis")
             }
         }
+        ToolbarItem(placement: .status) {
+            SyncStatusButton()
+        }
     }
 
     // MARK: - New deck alert

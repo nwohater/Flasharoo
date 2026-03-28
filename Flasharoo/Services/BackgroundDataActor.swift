@@ -350,10 +350,43 @@ actor BackgroundDataActor: ModelActor {
         }
     }
 
+    // MARK: - Orphaned card adoption
+
+    /// Moves cards whose deckID no longer matches any live deck into an "Unsorted" deck.
+    /// Runs on launch after a potential mid-sync deck deletion from another device.
+    func adoptOrphanedCards() {
+        let deckDescriptor = FetchDescriptor<Deck>(
+            predicate: #Predicate { $0.deletedAt == nil }
+        )
+        let decks = (try? modelContext.fetch(deckDescriptor)) ?? []
+        let validIDs = Set(decks.map { $0.id })
+
+        let cardDescriptor = FetchDescriptor<Card>(
+            predicate: #Predicate { $0.deletedAt == nil }
+        )
+        let allCards = (try? modelContext.fetch(cardDescriptor)) ?? []
+        let orphans = allCards.filter { !validIDs.contains($0.deckID) }
+        guard !orphans.isEmpty else { return }
+
+        let unsorted: Deck
+        if let existing = decks.first(where: { $0.name == "Unsorted" }) {
+            unsorted = existing
+        } else {
+            let d = Deck(name: "Unsorted", sortIndex: decks.count)
+            modelContext.insert(d)
+            unsorted = d
+        }
+
+        for card in orphans {
+            card.deckID = unsorted.id
+        }
+        try? modelContext.save()
+    }
+
     // MARK: - Soft-delete cleanup
 
     /// Permanently deletes records soft-deleted more than 30 days ago.
-    /// Called from BGAppRefreshTask, not during active study.
+    /// Called from BGProcessingTask, not during active study.
     func purgeOldSoftDeletes() {
         let cutoff = Date().addingTimeInterval(-30 * 24 * 60 * 60)
 
