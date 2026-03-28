@@ -13,6 +13,7 @@ struct DeckDetailView: View {
     let deck: Deck
 
     @State private var showingNewCard = false
+    @State private var showingStats = false
 
     private var activeCards: [Card] { deck.cards.filter { $0.deletedAt == nil } }
     private var dueCount: Int {
@@ -51,9 +52,26 @@ struct DeckDetailView: View {
                     Label("New Card", systemImage: "plus")
                 }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    showingStats = true
+                } label: {
+                    Label("Statistics", systemImage: "chart.bar.xaxis")
+                }
+            }
         }
         .sheet(isPresented: $showingNewCard) {
             CardEditorView(deck: deck)
+        }
+        .sheet(isPresented: $showingStats) {
+            NavigationStack {
+                StatsView(title: "\(deck.name) Stats", deckID: deck.id)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingStats = false }
+                        }
+                    }
+            }
         }
     }
 

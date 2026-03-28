@@ -24,6 +24,7 @@ struct DeckListView: View {
     @State private var showingQueryBuilder = false
     @State private var showingNewFilteredDeck = false
     @State private var editingFilteredDeck: FilteredDeck?
+    @State private var showingGlobalStats = false
 
     @State private var searchVM: SearchViewModel?
 
@@ -59,6 +60,16 @@ struct DeckListView: View {
         }
         .sheet(item: $editingFilteredDeck) { fd in
             FilteredDeckEditorSheet(existing: fd)
+        }
+        .sheet(isPresented: $showingGlobalStats) {
+            NavigationStack {
+                StatsView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingGlobalStats = false }
+                        }
+                    }
+            }
         }
         .task {
             if searchVM == nil {
@@ -117,6 +128,11 @@ struct DeckListView: View {
         ToolbarItem(placement: .secondaryAction) {
             Button { showingNewFilteredDeck = true } label: {
                 Label("New Filtered Deck", systemImage: "line.3.horizontal.decrease.circle")
+            }
+        }
+        ToolbarItem(placement: .secondaryAction) {
+            Button { showingGlobalStats = true } label: {
+                Label("Statistics", systemImage: "chart.bar.xaxis")
             }
         }
     }

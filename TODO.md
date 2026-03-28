@@ -125,20 +125,20 @@
 
 ## Phase 10 — Statistics
 
-- [ ] `StatsViewModel` scaffold
-- [ ] Daily review aggregation (`DailyReviewSummary`)
-- [ ] Retention heatmap (custom `Canvas`, 12×12pt cells, blue ramp, tap for popover)
-- [ ] Daily review bar chart — last 30 days, stacked new/learning/review (Swift Charts)
-- [ ] Forecast bar chart — next 30 days (Swift Charts)
-- [ ] Card state breakdown pie chart (Swift Charts)
-- [ ] Ease factor histogram (Swift Charts)
-- [ ] Interval distribution histogram (Swift Charts)
-- [ ] Stability distribution — FSRS only (Swift Charts)
-- [ ] True retention curve — FSRS only (Swift Charts)
-- [ ] Streak calculation (current + longest)
-- [ ] Global stats screen
-- [ ] Per-deck stats screen
-- [ ] All aggregations run in `BackgroundDataActor`
+- [x] `StatsViewModel` scaffold
+- [x] Daily review aggregation (`DailyReviewSummary`) — 365-day window, new/learning/review/success counts
+- [x] Retention heatmap (custom `Canvas`, 12×12pt cells, blue ramp, tap for popover via `SpatialTapGesture`)
+- [x] Daily review bar chart — last 30 days, stacked new/learning/review (Swift Charts)
+- [x] Forecast bar chart — next 30 days (Swift Charts)
+- [x] Card state breakdown pie chart (Swift Charts `SectorMark`)
+- [x] Ease factor histogram (Swift Charts, pre-binned 0.2-wide buckets)
+- [x] Interval distribution histogram (Swift Charts, logarithmic-ish buckets)
+- [x] Stability distribution — FSRS only (Swift Charts)
+- [x] True retention curve — FSRS theoretical R(t)=0.9^(t/S), 4 stability series (Swift Charts)
+- [x] Streak calculation (current + longest) in `BackgroundDataActor`
+- [x] Global stats screen — sheet from DeckListView toolbar
+- [x] Per-deck stats screen — sheet from DeckDetailView toolbar
+- [x] All aggregations run in `BackgroundDataActor`
 
 ---
 
