@@ -12,5 +12,9 @@
 	<array>
 		<string>com.golackey.flasharoo.mediasync</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Flasharoo uses the camera to capture images for flashcards.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Flasharoo accesses your photo library to add images to flashcards.</string>
 </dict>
 </plist>

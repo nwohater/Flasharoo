@@ -5,7 +5,7 @@
 //  Created by Brandon Lackey on 3/26/26.
 //
 //  Again / Hard / Good / Easy rating buttons shown after answer reveal.
-//  Adapts from a single row (iPad/Mac) to 2×2 grid (compact iPhone).
+//  Uses the Paper theme warm palette with solid fills.
 //
 
 import SwiftUI
@@ -17,56 +17,42 @@ struct RatingButtonsView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        Group {
-            if sizeClass == .compact {
-                // iPhone: 2×2 grid
-                VStack(spacing: 10) {
-                    HStack(spacing: 10) {
-                        ratingButton(label: "Again", hint: hints.again, rating: 1, color: .red)
-                        ratingButton(label: "Hard",  hint: hints.hard,  rating: 2, color: .orange)
-                    }
-                    HStack(spacing: 10) {
-                        ratingButton(label: "Good",  hint: hints.good,  rating: 3, color: .green)
-                        ratingButton(label: "Easy",  hint: hints.easy,  rating: 4, color: .blue)
-                    }
-                }
-            } else {
-                // iPad / Mac: single row
-                HStack(spacing: 12) {
-                    ratingButton(label: "Again", hint: hints.again, rating: 1, color: .red)
-                    ratingButton(label: "Hard",  hint: hints.hard,  rating: 2, color: .orange)
-                    ratingButton(label: "Good",  hint: hints.good,  rating: 3, color: .green)
-                    ratingButton(label: "Easy",  hint: hints.easy,  rating: 4, color: .blue)
-                }
-            }
+        HStack(spacing: 8) {
+            ratingButton(label: "Again", hint: hints.again, rating: 1,
+                         bg: .ratingAgainBg, fg: .white)
+            ratingButton(label: "Hard",  hint: hints.hard,  rating: 2,
+                         bg: .ratingHardBg, fg: .ratingHardInk)
+            ratingButton(label: "Good",  hint: hints.good,  rating: 3,
+                         bg: .ratingGoodBg, fg: .ratingGoodInk)
+            ratingButton(label: "Easy",  hint: hints.easy,  rating: 4,
+                         bg: .ratingEasyBg, fg: .ratingEasyInk)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)
+        .padding(.top, 4)
     }
 
-    private func ratingButton(label: String, hint: String, rating: Int, color: Color) -> some View {
+    private func ratingButton(label: String, hint: String, rating: Int, bg: Color, fg: Color) -> some View {
         Button {
             onRate(rating)
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Text(label)
-                    .font(.headline)
+                    .font(.system(size: 15, weight: .semibold))
                 Text(hint)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .opacity(0.75)
+                    .monospacedDigit()
             }
+            .foregroundStyle(fg)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .frame(height: 60)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(color.opacity(0.15))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(color.opacity(0.4), lineWidth: 1)
-                    )
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(bg)
+                    .shadow(color: .black.opacity(0.05), radius: 1, y: 1)
             )
         }
         .buttonStyle(.plain)
-        .foregroundStyle(color)
     }
 }

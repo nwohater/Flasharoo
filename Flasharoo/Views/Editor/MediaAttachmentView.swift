@@ -146,7 +146,7 @@ private struct AssetThumbnailView: View {
     let asset: MediaAsset
     let onDelete: () -> Void
 
-    @State private var thumbnail: UIImage?
+    @State private var thumbnail: PlatformImage?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -154,15 +154,21 @@ private struct AssetThumbnailView: View {
                 if asset.type == .audio {
                     audioPlaceholder
                 } else if let img = thumbnail {
+                    #if os(iOS)
                     Image(uiImage: img)
                         .resizable()
                         .scaledToFill()
+                    #else
+                    Image(nsImage: img)
+                        .resizable()
+                        .scaledToFill()
+                    #endif
                 } else {
                     ProgressView()
                 }
             }
             .frame(width: 80, height: 80)
-            .background(Color(.tertiarySystemFill))
+            .background(Color.adaptiveTertiaryFill)
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             Button {

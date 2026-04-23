@@ -12,6 +12,30 @@
 import SwiftUI
 import WebKit
 
+// Shared coordinator — WKScriptMessageHandler is cross-platform.
+final class CardWebViewCoordinator: NSObject, WKScriptMessageHandler {
+    var lastHTML: String = ""
+
+    func userContentController(
+        _ userContentController: WKUserContentController,
+        didReceive message: WKScriptMessage
+    ) {
+        guard message.name == "heightReported",
+              let raw = message.body as? NSNumber
+        else { return }
+
+        let height = CGFloat(raw.doubleValue)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(
+                name: .cardWebViewHeightChanged,
+                object: nil,
+                userInfo: ["height": height]
+            )
+        }
+    }
+}
+
+#if os(iOS)
 struct CardWebView: UIViewRepresentable {
     let html: String
     @Binding var contentHeight: CGFloat
@@ -34,43 +58,41 @@ struct CardWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // Only reload when HTML actually changes to avoid flicker
         guard context.coordinator.lastHTML != html else { return }
         context.coordinator.lastHTML = html
         webView.loadHTMLString(html, baseURL: Bundle.main.resourceURL)
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    // MARK: - Coordinator
-
-    final class Coordinator: NSObject, WKScriptMessageHandler {
-        var lastHTML: String = ""
-
-        func userContentController(
-            _ userContentController: WKUserContentController,
-            didReceive message: WKScriptMessage
-        ) {
-            guard message.name == "heightReported",
-                  let raw = message.body as? NSNumber
-            else { return }
-
-            let height = CGFloat(raw.doubleValue)
-            // Height is reported on the WKWebView's internal thread — marshal to main
-            DispatchQueue.main.async { [weak self] in
-                _ = self  // capture coordinator to keep it alive
-            }
-            // Post back via the binding on the next runloop tick
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: .cardWebViewHeightChanged,
-                    object: nil,
-                    userInfo: ["height": height]
-                )
-            }
-        }
-    }
+    func makeCoordinator() -> CardWebViewCoordinator { CardWebViewCoordinator() }
 }
+#else
+struct CardWebView: NSViewRepresentable {
+    let html: String
+    @Binding var contentHeight: CGFloat
+
+    func makeNSView(context: Context) -> WKWebView {
+        let controller = WKUserContentController()
+        controller.add(context.coordinator, name: "heightReported")
+
+        let config = WKWebViewConfiguration()
+        config.userContentController = controller
+        config.setURLSchemeHandler(AssetURLSchemeHandler(), forURLScheme: "asset")
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.isOpaque = false
+        webView.setValue(false, forKey: "drawsBackground")
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        guard context.coordinator.lastHTML != html else { return }
+        context.coordinator.lastHTML = html
+        webView.loadHTMLString(html, baseURL: Bundle.main.resourceURL)
+    }
+
+    func makeCoordinator() -> CardWebViewCoordinator { CardWebViewCoordinator() }
+}
+#endif
 
 extension Notification.Name {
     static let cardWebViewHeightChanged = Notification.Name("cardWebViewHeightChanged")

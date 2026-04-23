@@ -12,20 +12,25 @@
 import Foundation
 import WebKit
 import UniformTypeIdentifiers
+#if os(iOS)
+import UIKit
+#else
+import AppKit
+#endif
 
 final class AssetURLSchemeHandler: NSObject, WKURLSchemeHandler {
 
     private let mediaBase: URL
 
-    /// A minimal 40×40 gray placeholder PNG (1×1 pixel scaled via CSS).
+    /// A minimal 40×40 gray placeholder PNG served when a media file is pending download.
     /// Generated once at init and reused for all missing-asset responses.
     private let placeholderData: Data = {
         let size = CGSize(width: 40, height: 40)
+        #if os(iOS)
         let renderer = UIGraphicsImageRenderer(size: size)
         let image = renderer.image { ctx in
             UIColor.systemGray4.setFill()
             ctx.fill(CGRect(origin: .zero, size: size))
-            // Cloud icon in center
             let config = UIImage.SymbolConfiguration(pointSize: 20, weight: .light)
             if let icon = UIImage(systemName: "icloud.and.arrow.down", withConfiguration: config) {
                 let tinted = icon.withTintColor(.systemGray2, renderingMode: .alwaysOriginal)
@@ -35,6 +40,21 @@ final class AssetURLSchemeHandler: NSObject, WKURLSchemeHandler {
             }
         }
         return image.pngData() ?? Data()
+        #else
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: Int(size.width), height: Int(size.height),
+            bitsPerComponent: 8, bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return Data() }
+        ctx.setFillColor(NSColor.systemGray.withAlphaComponent(0.35).cgColor)
+        ctx.fill(CGRect(origin: .zero, size: size))
+        guard let cgImage = ctx.makeImage() else { return Data() }
+        let rep = NSBitmapImageRep(cgImage: cgImage)
+        return rep.representation(using: .png, properties: [:]) ?? Data()
+        #endif
     }()
 
     override init() {

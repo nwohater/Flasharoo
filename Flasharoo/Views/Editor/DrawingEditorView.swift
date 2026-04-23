@@ -8,11 +8,14 @@
 //   1. Serialises PKDrawing → MediaAsset (.drawing)
 //   2. Exports PNG at 2× scale → MediaAsset (.image)
 //  Calls onSave(imageAssetID) so the editor can embed the img tag.
+//  Drawing is iOS/iPadOS only — not available on macOS.
 //
 
 import SwiftUI
-import PencilKit
 import SwiftData
+
+#if os(iOS)
+import PencilKit
 
 struct DrawingEditorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -123,3 +126,4 @@ struct DrawingEditorView: View {
         }
     }
 }
+#endif

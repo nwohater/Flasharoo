@@ -122,7 +122,7 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Summary", systemImage: "star")
                 .font(.headline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.paperInkMuted)
 
             Grid(horizontalSpacing: 16, verticalSpacing: 12) {
                 GridRow {
@@ -130,13 +130,13 @@ struct StatsView: View {
                         value: "\(data.currentStreak)",
                         label: "Day Streak",
                         icon: "flame.fill",
-                        color: data.currentStreak > 0 ? .orange : .secondary
+                        color: data.currentStreak > 0 ? .paperAccent : .paperInkMuted
                     )
                     statCard(
                         value: "\(data.longestStreak)",
                         label: "Best Streak",
                         icon: "trophy.fill",
-                        color: .yellow
+                        color: .paperAccent
                     )
                 }
                 GridRow {
@@ -144,7 +144,7 @@ struct StatsView: View {
                         value: "\(data.totalReviews)",
                         label: "Total Reviews",
                         icon: "rectangle.stack.fill",
-                        color: .blue
+                        color: .stateNew
                     )
                     statCard(
                         value: "\(Int(data.averageRetention * 100))%",
@@ -163,20 +163,22 @@ struct StatsView: View {
                 .font(.title2)
                 .foregroundStyle(color)
             Text(value)
-                .font(.title2.bold())
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(Color.paperInk)
+                .monospacedDigit()
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.paperInkMuted)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.adaptiveSecondaryBg)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func retentionColor(_ r: Double) -> Color {
-        r >= 0.9 ? .green : r >= 0.75 ? .orange : .red
+        r >= 0.9 ? .stateReview : r >= 0.75 ? .paperAccent : .ratingAgainBg
     }
 
     // MARK: - Chart section wrapper
@@ -190,11 +192,11 @@ struct StatsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: systemImage)
                 .font(.headline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.paperInkMuted)
             content()
         }
         .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color.adaptiveSecondaryBg)
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }

@@ -104,11 +104,28 @@ struct StudyView: View {
     // MARK: - Progress bar
 
     private var progressBar: some View {
-        HStack {
-            Text("\(vm.remainingCount) remaining")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
+        VStack(spacing: 4) {
+            HStack {
+                Text("\(vm.remainingCount) remaining")
+                    .font(.caption)
+                    .foregroundStyle(Color.paperInkMuted)
+                Spacer()
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.paperInk.opacity(0.08))
+                    let progress = vm.totalCount > 0
+                        ? CGFloat(vm.totalCount - vm.remainingCount) / CGFloat(vm.totalCount)
+                        : 0
+                    Capsule()
+                        .fill(Color.paperAccent)
+                        .frame(width: geo.size.width * progress)
+                        .animation(.easeOut(duration: 0.3), value: progress)
+                }
+                .frame(height: 3)
+            }
+            .frame(height: 3)
         }
     }
 

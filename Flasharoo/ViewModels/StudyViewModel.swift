@@ -77,7 +77,7 @@ final class StudyViewModel {
 
     private var queue: [Card] = []
     private var queueIndex = 0
-    private var undoSnapshot: (card: Card, oldState: CardScheduleState, ratedAt: Date)?
+    private var undoSnapshot: (card: Card, oldState: CardScheduleState, ratedAt: Date, review: CardReview?)?
     private var cardAppearTime = Date()
 
     private let modelContext: ModelContext
@@ -169,6 +169,7 @@ final class StudyViewModel {
     var canUndo: Bool { undoSnapshot != nil }
 
     var remainingCount: Int { max(0, queue.count - queueIndex) }
+    var totalCount: Int { queue.count }
 
     // MARK: - Actions
 
@@ -185,8 +186,7 @@ final class StudyViewModel {
         let result = scheduler.nextReview(for: oldState, rating: rating, algorithm: algorithm)
         let timeTaken = Date().timeIntervalSince(cardAppearTime)
 
-        // Save undo snapshot
-        undoSnapshot = (card: card, oldState: oldState, ratedAt: Date())
+        var savedReview: CardReview? = nil
 
         if source.rescheduleCards {
             // Apply scheduling state to card
@@ -211,8 +211,12 @@ final class StudyViewModel {
                 timeTaken: timeTaken
             )
             modelContext.insert(review)
+            savedReview = review
             try? modelContext.save()
         }
+
+        // Save undo snapshot after review is created so we can mark it undone
+        undoSnapshot = (card: card, oldState: oldState, ratedAt: Date(), review: savedReview)
 
         stats.totalReviewed += 1
         if rating >= 3 { stats.goodOrEasyCount += 1 }
@@ -243,6 +247,9 @@ final class StudyViewModel {
             card.state              = old.state
             card.dueDate            = old.dueDate
             card.modifiedAt         = Date()
+            if let review = snap.review {
+                review.undoneAt = Date()
+            }
             try? modelContext.save()
         }
 

@@ -44,6 +44,18 @@ struct DeckListView: View {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    private var totalDueCount: Int {
+        let now = Date()
+        return activeDecks.reduce(0) { sum, deck in
+            sum + deck.cards.filter {
+                $0.deletedAt == nil &&
+                $0.dueDate <= now &&
+                $0.state != .suspended &&
+                $0.state != .buried
+            }.count
+        }
+    }
+
     var body: some View {
         Group {
             if isSearching, let vm = searchVM {
@@ -52,8 +64,8 @@ struct DeckListView: View {
                 mainList
             }
         }
-        .navigationTitle("Flasharoo")
-        .searchable(text: $searchText, placement: .sidebar, prompt: "Search cards…")
+        .navigationTitle("Decks")
+        .searchable(text: $searchText, placement: .sidebar, prompt: "Search cards, tags, decks…")
         .onChange(of: searchText) { _, newValue in
             searchVM?.query = newValue
         }
@@ -109,6 +121,21 @@ struct DeckListView: View {
 
     private var mainList: some View {
         List(selection: $selectedDeck) {
+            // Due summary chip
+            if totalDueCount > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                        .foregroundStyle(Color.paperAccent)
+                        .font(.caption)
+                    Text("\(totalDueCount) due today")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.paperInkMid)
+                }
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .padding(.bottom, 2)
+            }
+
             Section("Decks") {
                 ForEach(activeDecks) { deck in
                     NavigationLink(value: deck) {
@@ -125,7 +152,7 @@ struct DeckListView: View {
             }
 
             if !activeFilteredDecks.isEmpty {
-                Section("Filtered Decks") {
+                Section("Filtered") {
                     ForEach(activeFilteredDecks) { fd in
                         FilteredDeckRowView(filteredDeck: fd, isSelected: selectedFilteredDeck?.id == fd.id)
                             .contentShape(Rectangle())
@@ -142,7 +169,7 @@ struct DeckListView: View {
                                 } label: {
                                     Label("Edit", systemImage: "pencil")
                                 }
-                                .tint(.blue)
+                                .tint(.paperAccent)
                             }
                     }
                 }
@@ -220,17 +247,79 @@ struct DeckListView: View {
 private struct DeckRowView: View {
     let deck: Deck
 
-    private var activeCardCount: Int {
-        deck.cards.filter { $0.deletedAt == nil }.count
+    private var activeCards: [Card] { deck.cards.filter { $0.deletedAt == nil } }
+
+    private var dueCount: Int {
+        let now = Date()
+        return activeCards.filter {
+            $0.dueDate <= now && $0.state != .suspended && $0.state != .buried
+        }.count
     }
 
+    private var newCount: Int {
+        activeCards.filter { $0.state == .new }.count
+    }
+
+    private var isDue: Bool { dueCount > 0 }
+
+    private var isAI: Bool { deck.aiPrompt != nil }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(deck.name)
-                .font(.headline)
-            Text("\(activeCardCount) cards")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            // Deck icon
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isDue
+                        ? LinearGradient(colors: [.paperAccent, Color(hex: "D9A25A")],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing)
+                        : LinearGradient(colors: [Color.paperAccent.opacity(0.12), Color.paperAccent.opacity(0.12)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                Image(systemName: isAI ? "wand.and.stars" : "rectangle.stack.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(isDue ? .white : .paperAccent)
+            }
+            .frame(width: 30, height: 30)
+
+            // Name + subtitle
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(deck.name)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.paperInk)
+                        .lineLimit(1)
+                    if let algo = deck.algorithmOverride {
+                        Text(algo == .fsrs ? "FSRS" : "SM-2")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.paperInkMuted)
+                            .kerning(0.5)
+                    }
+                }
+                HStack(spacing: 6) {
+                    Text("\(activeCards.count) cards")
+                    if newCount > 0 {
+                        Text("·")
+                            .foregroundStyle(Color.paperInkMuted.opacity(0.4))
+                        Text("\(newCount) new")
+                    }
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(Color.paperInkMuted)
+            }
+
+            Spacer()
+
+            // Due badge
+            if dueCount > 0 {
+                Text("\(dueCount)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule().fill(Color.paperAccent)
+                    )
+            }
         }
         .padding(.vertical, 2)
     }
@@ -243,27 +332,39 @@ private struct FilteredDeckRowView: View {
     let isSelected: Bool
 
     var body: some View {
-        HStack {
-            Image(systemName: "line.3.horizontal.decrease.circle")
-                .foregroundStyle(.purple)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(filteredDeck.name)
-                    .font(.headline)
-                Text(filteredDeck.queryString)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .monospaced()
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.stateNew.opacity(0.12))
+                Image(systemName: "line.3.horizontal.decrease")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.stateNew)
             }
-            Spacer()
-            if filteredDeck.rescheduleCards {
-                Image(systemName: "brain")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(filteredDeck.name)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.paperInk)
+                    if filteredDeck.rescheduleCards {
+                        Text("CRAM")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.ratingAgainBg)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.ratingAgainBg.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    }
+                }
+                Text(filteredDeck.queryString)
+                    .font(.system(size: 11.5).monospaced())
+                    .foregroundStyle(Color.paperInkMuted)
+                    .lineLimit(1)
             }
         }
         .padding(.vertical, 2)
-        .background(isSelected ? Color.accentColor.opacity(0.1) : Color.clear)
+        .background(isSelected ? Color.paperAccent.opacity(0.08) : Color.clear)
         .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }

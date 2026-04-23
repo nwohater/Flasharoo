@@ -24,7 +24,9 @@ struct CardEditorView: View {
     @State private var pendingCardID = UUID()
 
     @FocusState private var focusedField: CardField?
+    #if os(iOS)
     @State private var showingDrawing = false
+    #endif
 
     private enum CardField { case front, back }
 
@@ -79,6 +81,7 @@ struct CardEditorView: View {
                     Button("Save") { save() }
                         .disabled(front.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                #if os(iOS)
                 ToolbarItem(placement: .secondaryAction) {
                     Button {
                         focusedField = nil
@@ -87,8 +90,10 @@ struct CardEditorView: View {
                         Label("Drawing", systemImage: "pencil.tip")
                     }
                 }
+                #endif
             }
             .onAppear(perform: loadCard)
+            #if os(iOS)
             .sheet(isPresented: $showingDrawing) {
                 DrawingEditorView(cardID: pendingCardID) { imageAssetID in
                     let tag = "<img src=\"asset://\(imageAssetID.uuidString)\">"
@@ -99,6 +104,7 @@ struct CardEditorView: View {
                     }
                 }
             }
+            #endif
         }
     }
 

@@ -8,8 +8,7 @@
 import Foundation
 import SwiftData
 
-/// Append-only review record — never updated after creation.
-/// This makes CloudKit sync conflicts impossible for review data.
+/// Append-only review record. undoneAt is set once when the user undoes the rating.
 @Model
 final class CardReview {
     @Attribute(.unique) var id: UUID
@@ -20,6 +19,7 @@ final class CardReview {
     var intervalBefore: Int             // days
     var intervalAfter: Int              // days
     var timeTaken: TimeInterval         // seconds spent on this card
+    var undoneAt: Date?                 // set when user undoes this rating
     var card: Card?
 
     init(

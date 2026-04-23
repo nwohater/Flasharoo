@@ -6,9 +6,12 @@
 //
 //  UIViewRepresentable wrapping PKCanvasView with PKToolPicker.
 //  Input policy: .anyInput — supports Pencil, finger, and mouse/trackpad.
+//  Drawing is iOS/iPadOS only — Apple Pencil is not available on macOS.
 //
 
 import SwiftUI
+
+#if os(iOS)
 import PencilKit
 
 struct DrawingCanvasView: UIViewRepresentable {
@@ -57,3 +60,4 @@ struct DrawingCanvasView: UIViewRepresentable {
         }
     }
 }
+#endif

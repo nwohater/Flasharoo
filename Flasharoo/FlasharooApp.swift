@@ -60,6 +60,7 @@ struct FlasharooApp: App {
                     .modelContainer(container)
                     .environment(syncMonitor)
                     .environment(aiSettings)
+                    .tint(.paperAccent)
                     .task { await runLaunchTasks(container: container) }
 
             case .failure(let error):

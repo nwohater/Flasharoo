@@ -132,11 +132,16 @@ struct FilteredDeckDetailView: View {
 // Launches StudyView with pre-fetched cards from the filtered deck.
 private struct _FilteredDeckStudyLauncher: View {
     @Environment(\.modelContext) private var modelContext
+    @Query private var allSettings: [UserSettings]
     let filteredDeck: FilteredDeck
     let searchVM: SearchViewModel
 
     @State private var cards: [Card] = []
     @State private var isLoading = true
+
+    private var defaultAlgorithm: SchedulerAlgorithm {
+        allSettings.first?.defaultAlgorithm ?? .fsrs
+    }
 
     var body: some View {
         Group {
@@ -146,7 +151,7 @@ private struct _FilteredDeckStudyLauncher: View {
                 StudyView(
                     cards: cards,
                     name: filteredDeck.name,
-                    algorithm: .fsrs,
+                    algorithm: defaultAlgorithm,
                     rescheduleCards: filteredDeck.rescheduleCards,
                     modelContext: modelContext
                 )

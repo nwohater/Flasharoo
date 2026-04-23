@@ -8,8 +8,14 @@
 //
 
 import Foundation
-import UIKit
 import AVFoundation
+#if os(iOS)
+import UIKit
+typealias PlatformImage = UIImage
+#else
+import AppKit
+typealias PlatformImage = NSImage
+#endif
 import CryptoKit
 import CloudKit
 
@@ -43,7 +49,7 @@ actor MediaService {
     static let shared = MediaService()
 
     private let baseURL: URL
-    private let thumbnailCache = NSCache<NSString, UIImage>()
+    private let thumbnailCache = NSCache<NSString, PlatformImage>()
     private let ckContainerID = "iCloud.com.golackey.flasharoo"
 
     init() {
@@ -112,14 +118,19 @@ actor MediaService {
     func thumbnail(
         for asset: MediaAsset,
         size: CGSize = CGSize(width: 80, height: 80)
-    ) async throws -> UIImage {
+    ) async throws -> PlatformImage {
         let cacheKey = "\(asset.id.uuidString)_\(Int(size.width))x\(Int(size.height))" as NSString
         if let cached = thumbnailCache.object(forKey: cacheKey) {
             return cached
         }
         let data = try await load(asset: asset)
+        #if os(iOS)
         guard let image = UIImage(data: data) else { throw MediaServiceError.unsupportedFormat }
         let thumb = image.preparingThumbnail(of: size) ?? image
+        #else
+        guard let image = NSImage(data: data) else { throw MediaServiceError.unsupportedFormat }
+        let thumb = image
+        #endif
         thumbnailCache.setObject(thumb, forKey: cacheKey)
         return thumb
     }
@@ -231,9 +242,17 @@ actor MediaService {
         let limit = 5 * 1024 * 1024
         if data.count <= limit { return (data, mimeType) }
 
+        #if os(iOS)
         guard let image = UIImage(data: data),
               let compressed = image.jpegData(compressionQuality: 0.85)
         else { throw MediaServiceError.fileTooLarge(data.count / 1_048_576) }
+        #else
+        guard let image = NSImage(data: data),
+              let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let compressed = bitmap.representation(using: .jpeg, properties: [.compressionFactor: 0.85])
+        else { throw MediaServiceError.fileTooLarge(data.count / 1_048_576) }
+        #endif
 
         if compressed.count > limit {
             throw MediaServiceError.fileTooLarge(data.count / 1_048_576)

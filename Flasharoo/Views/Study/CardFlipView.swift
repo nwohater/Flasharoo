@@ -25,9 +25,10 @@ struct CardFlipView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(.secondarySystemBackground))
-                .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.paperSurface)
+                .shadow(color: Color.paperInk.opacity(0.04), radius: 2, y: 1)
+                .shadow(color: Color.paperInk.opacity(0.06), radius: 24, y: 8)
         )
         .padding(.horizontal, 16)
         .padding(.top, 8)
